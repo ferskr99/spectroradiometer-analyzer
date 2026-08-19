@@ -1,12 +1,21 @@
-﻿# Entornos virtuales
+# Entornos virtuales
 venv/
 env/
 .venv/
+
+# Node
+node_modules/
+package-lock.json
 
 # Python Cache
 __pycache__/
 *.py[cod]
 *.class
+
+# Bases de datos y exports
+*.db
+*.sqlite
+exports/
 
 # Entorno y configuraciones locales
 .env

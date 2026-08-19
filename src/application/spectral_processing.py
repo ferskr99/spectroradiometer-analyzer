@@ -161,7 +161,7 @@ class SpectralProcessorUseCase:
         integral = trapezoid(integrand, wl_par)
 
         # Aplicar constantes: convertir a µmol/m²/s
-        ppfd = integral * 1e-6 / (_PLANCK_H * _SPEED_C * _AVOGADRO) * 1e-3
+        ppfd = integral * 1e-6 / (_PLANCK_H * _SPEED_C * _AVOGADRO)
 
         return round(float(ppfd), 4)
 
