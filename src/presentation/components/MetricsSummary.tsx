@@ -7,36 +7,7 @@
  */
 
 import React, { useMemo } from "react";
-import type { AnalysisResult, SpectralData } from "../../infrastructure/api";
-
-// ─────────────────────────────────────────────────────────────────────
-// Helpers de cálculo client-side
-// ─────────────────────────────────────────────────────────────────────
-
-/**
- * Integración trapezoidal sobre un rango de longitud de onda.
- * Los datos deben estar a intervalos de 1nm para máxima precisión.
- */
-function integrateRange(
-  spectrum: SpectralData,
-  startNm: number,
-  endNm: number,
-): number {
-  const { wavelengths, irradiance } = spectrum;
-  let sum = 0;
-  for (let i = 0; i < wavelengths.length - 1; i++) {
-    const wl = wavelengths[i];
-    const wlNext = wavelengths[i + 1];
-    if (wl >= startNm && wlNext <= endNm) {
-      // Regla del trapecio: (f(a) + f(b)) / 2 × Δx
-      // Con Δx = 1nm y E(λ) en W/m²/µm → resultado en W/m²/µm·nm
-      // Factor ×1e-3 convierte nm → µm para obtener W/m²
-      sum += (irradiance[i] + irradiance[i + 1]) * 0.5 * (wlNext - wl);
-    }
-  }
-  // Convertir de W/m²/µm · nm a W/m²  (1nm = 1e-3 µm)
-  return sum * 1e-3;
-}
+import type { AnalysisResult } from "../../infrastructure/api";
 
 // ─────────────────────────────────────────────────────────────────────
 // Definición de métricas
@@ -62,9 +33,8 @@ const METRICS: MetricDefinition[] = [
     icon: "☀️",
     color: "#f59e0b",
     glowColor: "rgba(245, 158, 11, 0.15)",
-    getValue: (r) =>
-      r.merged_spectrum ? integrateRange(r.merged_spectrum, 400, 700) : 0,
-    format: (v) => v.toFixed(2),
+    getValue: (r) => r.par,
+    format: (v) => v.toFixed(4),
     description: "Radiación Fotosintéticamente Activa (400–700 nm)",
   },
   {
@@ -97,15 +67,8 @@ const METRICS: MetricDefinition[] = [
     icon: "⚡",
     color: "#a855f7",
     glowColor: "rgba(168, 85, 247, 0.15)",
-    getValue: (r) =>
-      r.merged_spectrum
-        ? integrateRange(
-            r.merged_spectrum,
-            r.merged_spectrum.wavelengths[0],
-            r.merged_spectrum.wavelengths[r.merged_spectrum.wavelengths.length - 1],
-          )
-        : 0,
-    format: (v) => v.toFixed(2),
+    getValue: (r) => r.total_irradiance,
+    format: (v) => v.toFixed(4),
     description: "Integral sobre el rango completo fusionado",
   },
 ];
