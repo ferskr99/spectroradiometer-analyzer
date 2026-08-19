@@ -1,0 +1,20 @@
+﻿# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*.class
+
+# Entorno y configuraciones locales
+.env
+.vscode/
+.idea/
+
+# Datos generados temporalmente (WSD, CSV masivos)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
