@@ -17,6 +17,17 @@ export type AnalysisRequest = components["schemas"]["AnalysisRequest"];
 export type AnalysisResult = components["schemas"]["AnalysisResult"];
 export type HTTPValidationError = components["schemas"]["HTTPValidationError"];
 
+export interface MeasurementRecord {
+  id: number;
+  timestamp: string;
+  sensor_target: string;
+  exposure_time_ms: number;
+  par: number;
+  ppfd: number;
+  illuminance: number;
+  total_irradiance: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Configuración
 // ─────────────────────────────────────────────────────────────────────
@@ -184,6 +195,39 @@ export class SpectroradiometerApiClient {
       method: "POST",
       body: JSON.stringify(request),
     });
+  }
+
+  /**
+   * GET /api/v1/sensors/history/list
+   *
+   * Obtiene el historial de mediciones.
+   */
+  async getHistory(limit: number = 50): Promise<MeasurementRecord[]> {
+    return this.request<MeasurementRecord[]>(
+      `/api/v1/sensors/history/list?limit=${limit}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * GET /api/v1/sensors/history/{record_id}
+   *
+   * Obtiene el detalle de una medición histórica, incluyendo su espectro completo.
+   */
+  async getHistoryDetail(recordId: number): Promise<AnalysisResult> {
+    return this.request<AnalysisResult>(
+      `/api/v1/sensors/history/${recordId}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * GET /api/v1/sensors/history/export/csv
+   *
+   * Obtiene la URL absoluta para descargar el CSV del historial.
+   */
+  getHistoryCsvUrl(): string {
+    return `${this.baseUrl}/api/v1/sensors/history/export/csv`;
   }
 }
 

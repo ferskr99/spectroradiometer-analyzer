@@ -1,12 +1,6 @@
-/**
- * MetricsSummary.tsx
- *
- * Panel de métricas científicas (KPI Cards) para los resultados
- * del análisis espectral. Muestra PAR, PPFD, Iluminancia e
- * Irradiancia Total con estados de esqueleto durante la carga.
- */
-
 import React, { useMemo } from "react";
+import type { AnalysisRequest } from "../../infrastructure/api";
+import { Sun, Leaf, Lightbulb, Zap } from "lucide-react";
 import type { AnalysisResult } from "../../infrastructure/api";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -17,9 +11,8 @@ interface MetricDefinition {
   id: string;
   label: string;
   unit: string;
-  icon: string;
+  icon: React.ReactNode;
   color: string;
-  glowColor: string;
   getValue: (result: AnalysisResult) => number;
   format: (value: number) => string;
   description: string;
@@ -30,9 +23,8 @@ const METRICS: MetricDefinition[] = [
     id: "par",
     label: "PAR",
     unit: "W/m²",
-    icon: "☀️",
-    color: "#f59e0b",
-    glowColor: "rgba(245, 158, 11, 0.15)",
+    icon: <Sun size={14} />,
+    color: "#eab308",
     getValue: (r) => r.par,
     format: (v) => v.toFixed(4),
     description: "Radiación Fotosintéticamente Activa (400–700 nm)",
@@ -41,58 +33,44 @@ const METRICS: MetricDefinition[] = [
     id: "ppfd",
     label: "PPFD",
     unit: "µmol/m²/s",
-    icon: "🌱",
+    icon: <Leaf size={14} />,
     color: "#10b981",
-    glowColor: "rgba(16, 185, 129, 0.15)",
     getValue: (r) => r.ppfd,
     format: (v) => v.toFixed(4),
-    description: "Densidad de Flujo de Fotones Fotosintéticos",
+    description: "Densidad de Flujo de Fotones",
   },
   {
     id: "illuminance",
     label: "Iluminancia",
     unit: "lx",
-    icon: "💡",
+    icon: <Lightbulb size={14} />,
     color: "#3b82f6",
-    glowColor: "rgba(59, 130, 246, 0.15)",
     getValue: (r) => r.illuminance,
     format: (v) =>
       v >= 1000 ? `${(v / 1000).toFixed(2)}k` : v.toFixed(2),
-    description: "Ponderación fotópica CIE 1931 (380–780 nm)",
+    description: "Ponderación fotópica CIE 1931",
   },
   {
     id: "total-irradiance",
     label: "Irradiancia Total",
     unit: "W/m²",
-    icon: "⚡",
+    icon: <Zap size={14} />,
     color: "#a855f7",
-    glowColor: "rgba(168, 85, 247, 0.15)",
     getValue: (r) => r.total_irradiance,
     format: (v) => v.toFixed(4),
-    description: "Integral sobre el rango completo fusionado",
+    description: "Integral rango completo",
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────
-// Props
-// ─────────────────────────────────────────────────────────────────────
-
 export interface MetricsSummaryProps {
-  /** Resultado del análisis espectral. `null` si no hay datos aún. */
   data: AnalysisResult | null;
-  /** `true` mientras el hardware está procesando (muestra skeletons). */
   isLoading: boolean;
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// Componente principal
-// ─────────────────────────────────────────────────────────────────────
 
 export const MetricsSummary: React.FC<MetricsSummaryProps> = ({
   data,
   isLoading,
 }) => {
-  // Pre-calcular valores para evitar re-computar en cada render
   const computedValues = useMemo(() => {
     if (!data) return null;
     return METRICS.map((m) => ({
@@ -103,9 +81,9 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({
 
   return (
     <div style={styles.container}>
-      <h3 style={styles.sectionTitle}>Métricas Radiométricas</h3>
+      <h3 style={styles.sectionTitle}>Lecturas Radiométricas</h3>
       <div style={styles.grid}>
-        {METRICS.map((metric, idx) => {
+        {METRICS.map((metric) => {
           const computed = computedValues?.find((c) => c.id === metric.id);
 
           return (
@@ -113,60 +91,33 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({
               key={metric.id}
               style={{
                 ...styles.card,
-                borderColor: isLoading ? "#1e293b" : `${metric.color}33`,
-                backgroundColor: isLoading ? "#0f172a" : metric.glowColor,
+                borderColor: isLoading ? "#2a2a2a" : "#333333",
               }}
             >
-              {/* Indicador de color superior */}
-              <div
-                style={{
-                  ...styles.cardAccent,
-                  backgroundColor: isLoading ? "#1e293b" : metric.color,
-                }}
-              />
-
-              <div style={styles.cardContent}>
-                {/* Icono y label */}
-                <div style={styles.cardHeader}>
-                  <span style={styles.cardIcon}>{metric.icon}</span>
-                  <span style={styles.cardLabel}>{metric.label}</span>
-                </div>
-
-                {/* Valor principal */}
-                {isLoading ? (
-                  <div style={styles.skeletonContainer}>
-                    <div
-                      style={{
-                        ...styles.skeletonValue,
-                        animationDelay: `${idx * 150}ms`,
-                      }}
-                    />
-                    <div
-                      style={{
-                        ...styles.skeletonUnit,
-                        animationDelay: `${idx * 150 + 100}ms`,
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div style={styles.valueContainer}>
-                    <span
-                      style={{
-                        ...styles.cardValue,
-                        color: computed && computed.value > 0
-                          ? metric.color
-                          : "#475569",
-                      }}
-                    >
-                      {computed ? metric.format(computed.value) : "—"}
-                    </span>
-                    <span style={styles.cardUnit}>{metric.unit}</span>
-                  </div>
-                )}
-
-                {/* Descripción */}
-                <p style={styles.cardDescription}>{metric.description}</p>
+              <div style={styles.cardHeader}>
+                <span style={{...styles.cardIcon, color: metric.color}}>{metric.icon}</span>
+                <span style={styles.cardLabel}>{metric.label}</span>
               </div>
+
+              {isLoading ? (
+                <div style={styles.skeletonContainer}>
+                  <div style={styles.skeletonValue} />
+                </div>
+              ) : (
+                <div style={styles.valueContainer}>
+                  <span
+                    style={{
+                      ...styles.cardValue,
+                      color: computed && computed.value > 0 ? "#e0e0e0" : "#555555",
+                    }}
+                  >
+                    {computed ? metric.format(computed.value) : "—"}
+                  </span>
+                  <span style={styles.cardUnit}>{metric.unit}</span>
+                </div>
+              )}
+
+              <p style={styles.cardDescription}>{metric.description}</p>
             </div>
           );
         })}
@@ -175,39 +126,30 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────
-// Estilos
-// ─────────────────────────────────────────────────────────────────────
-
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+    fontFamily: "'Inter', system-ui, sans-serif",
   },
   sectionTitle: {
-    color: "#f1f5f9",
-    fontSize: 16,
+    color: "#888888",
+    fontSize: 11,
     fontWeight: 600,
-    margin: "0 0 12px 4px",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    margin: "0 0 12px 0",
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: 12,
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 24,
   },
   card: {
-    position: "relative",
-    borderRadius: 10,
+    backgroundColor: "#161616",
+    borderRadius: 4,
     border: "1px solid",
-    overflow: "hidden",
-    transition: "all 0.3s ease",
-  },
-  cardAccent: {
-    height: 3,
-    width: "100%",
-    transition: "background-color 0.3s ease",
-  },
-  cardContent: {
-    padding: "12px 14px 14px",
+    padding: "12px 14px",
+    display: "flex",
+    flexDirection: "column",
   },
   cardHeader: {
     display: "flex",
@@ -216,66 +158,52 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 8,
   },
   cardIcon: {
-    fontSize: 16,
+    display: "flex",
+    alignItems: "center",
   },
   cardLabel: {
-    color: "#94a3b8",
-    fontSize: 12,
-    fontWeight: 500,
+    color: "#888888",
+    fontSize: 11,
+    fontWeight: 600,
     textTransform: "uppercase" as const,
     letterSpacing: "0.05em",
   },
-
-  // Valor
   valueContainer: {
     display: "flex",
     alignItems: "baseline",
-    gap: 6,
+    gap: 4,
     marginBottom: 6,
   },
   cardValue: {
-    fontSize: 26,
-    fontWeight: 700,
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+    fontSize: 22,
+    fontWeight: 500,
+    fontFamily: "'JetBrains Mono', monospace",
     lineHeight: 1,
-    transition: "color 0.3s ease",
   },
   cardUnit: {
-    color: "#64748b",
-    fontSize: 12,
-    fontWeight: 400,
+    color: "#666666",
+    fontSize: 11,
+    fontFamily: "'JetBrains Mono', monospace",
   },
   cardDescription: {
-    color: "#475569",
-    fontSize: 11,
+    color: "#666666",
+    fontSize: 10,
     margin: 0,
     lineHeight: 1.3,
   },
-
-  // Skeletons
   skeletonContainer: {
     display: "flex",
     flexDirection: "column",
     gap: 6,
     marginBottom: 6,
+    height: 22,
+    justifyContent: "center",
   },
   skeletonValue: {
-    width: "70%",
-    height: 28,
-    borderRadius: 6,
-    background:
-      "linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%)",
-    backgroundSize: "200% 100%",
-    animation: "shimmer 1.5s ease-in-out infinite",
-  },
-  skeletonUnit: {
-    width: "40%",
-    height: 14,
-    borderRadius: 4,
-    background:
-      "linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%)",
-    backgroundSize: "200% 100%",
-    animation: "shimmer 1.5s ease-in-out infinite",
+    width: "60%",
+    height: 16,
+    backgroundColor: "#2a2a2a",
+    borderRadius: 2,
   },
 };
 

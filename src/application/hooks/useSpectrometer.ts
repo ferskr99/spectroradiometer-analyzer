@@ -7,7 +7,7 @@
  * tiempo de exposición del obturador).
  */
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   apiClient,
   type AnalysisResult,
@@ -61,9 +61,15 @@ export interface UseAnalyzeSpectrumReturn {
  * porque el backend realiza I/O con el hardware (side-effect).
  */
 export function useAnalyzeSpectrum(): UseAnalyzeSpectrumReturn {
+  const queryClient = useQueryClient();
+
   const mutation = useMutation<AnalysisResult, ApiError, AnalysisRequest>({
     mutationKey: spectrometerKeys.analysis(),
     mutationFn: (request) => apiClient.analyzeSpectra(request),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["lastAnalysis"], data);
+      window.dispatchEvent(new Event("spectrometer:measurement_complete"));
+    },
     // No reintentamos automáticamente: la latencia del hardware hace que
     // los reintentos sean costosos (hasta 10s por intento adicional).
     retry: false,
