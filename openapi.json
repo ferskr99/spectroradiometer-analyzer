@@ -5,48 +5,6 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/v1/sensors/config": {
-      "post": {
-        "tags": [
-          "Hardware"
-        ],
-        "summary": "Configure Equipment",
-        "operationId": "configure_equipment_api_v1_sensors_config_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SpectrometerConfig"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "boolean",
-                  "title": "Response Configure Equipment Api V1 Sensors Config Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/sensors/{sensor_id}/spectrum": {
       "get": {
         "tags": [
@@ -96,8 +54,18 @@
           "Análisis"
         ],
         "summary": "Analyze Spectra",
-        "description": "Adquiere espectros de ambos sensores (MS-711 y MS-712), los fusiona,\ny calcula PPFD e iluminancia. Toda la lógica matemática reside en\nSpectralProcessorUseCase (capa de aplicación).",
+        "description": "Configura de forma atómica y adquiere los datos de los sensores solicitados.",
         "operationId": "analyze_spectra_api_v1_sensors_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -108,6 +76,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -115,6 +93,34 @@
   },
   "components": {
     "schemas": {
+      "AnalysisRequest": {
+        "properties": {
+          "sensor_target": {
+            "type": "string",
+            "enum": [
+              "MS-711",
+              "MS-712",
+              "Merge"
+            ],
+            "title": "Sensor Target",
+            "description": "Sensor a leer, o 'Merge' para adquirir y fusionar ambos."
+          },
+          "exposure_time_ms": {
+            "type": "integer",
+            "maximum": 5000.0,
+            "minimum": 10.0,
+            "title": "Exposure Time Ms",
+            "description": "Tiempo de exposición para la lectura (10-5000ms).",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "sensor_target"
+        ],
+        "title": "AnalysisRequest",
+        "description": "Payload para iniciar una configuración y lectura atómica."
+      },
       "AnalysisResult": {
         "properties": {
           "merged_spectrum": {
@@ -197,27 +203,6 @@
           "irradiance"
         ],
         "title": "SpectralData"
-      },
-      "SpectrometerConfig": {
-        "properties": {
-          "sensor_id": {
-            "type": "string",
-            "pattern": "^(MS-711|MS-712)$",
-            "title": "Sensor Id"
-          },
-          "exposure_time_ms": {
-            "type": "integer",
-            "maximum": 5000.0,
-            "minimum": 10.0,
-            "title": "Exposure Time Ms",
-            "default": 10
-          }
-        },
-        "type": "object",
-        "required": [
-          "sensor_id"
-        ],
-        "title": "SpectrometerConfig"
       },
       "ValidationError": {
         "properties": {

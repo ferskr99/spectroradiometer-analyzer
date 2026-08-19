@@ -1,6 +1,6 @@
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 class SpectralData(BaseModel):
     wavelengths: List[float] = Field(..., description="Array de longitudes de onda (nm)")
@@ -16,6 +16,15 @@ class SpectrometerConfig(BaseModel):
     sensor_id: str = Field(..., pattern="^(MS-711|MS-712)$")
     # El tiempo de exposición debe estar entre 10ms y 5000ms.
     exposure_time_ms: int = Field(default=10, ge=10, le=5000)
+
+class AnalysisRequest(BaseModel):
+    """Payload para iniciar una configuración y lectura atómica."""
+    sensor_target: Literal["MS-711", "MS-712", "Merge"] = Field(
+        ..., description="Sensor a leer, o 'Merge' para adquirir y fusionar ambos."
+    )
+    exposure_time_ms: int = Field(
+        default=10, ge=10, le=5000, description="Tiempo de exposición para la lectura (10-5000ms)."
+    )
 
 class AnalysisResult(BaseModel):
     """Resultado del análisis espectral combinado MS-711 + MS-712."""

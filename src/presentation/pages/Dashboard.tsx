@@ -12,9 +12,7 @@
 import React from "react";
 import {
   useAnalyzeSpectrum,
-  useConfigureSensor,
 } from "../../application/hooks/useSpectrometer";
-import type { SensorId } from "../../infrastructure/api";
 import { ControlPanel } from "../components/ControlPanel";
 import { MetricsSummary } from "../components/MetricsSummary";
 import { SpectralGraph } from "../components/SpectralGraph";
@@ -32,12 +30,6 @@ export const Dashboard: React.FC = () => {
     error,
     isSuccess,
   } = useAnalyzeSpectrum();
-
-  const { configure } = useConfigureSensor();
-
-  const handleConfigure = (sensorId: SensorId, exposureMs: number) => {
-    configure({ sensor_id: sensorId, exposure_time_ms: exposureMs });
-  };
 
   return (
     <div style={styles.page}>
@@ -70,7 +62,6 @@ export const Dashboard: React.FC = () => {
         <aside style={styles.sidebar}>
           <ControlPanel
             onAnalyze={analyze}
-            onConfigure={handleConfigure}
             isPending={isPending}
             isSuccess={isSuccess}
             errorMessage={isError ? error?.message ?? "Error desconocido" : null}

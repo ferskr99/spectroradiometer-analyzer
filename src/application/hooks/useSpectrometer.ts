@@ -12,7 +12,7 @@ import {
   apiClient,
   type AnalysisResult,
   type SpectralData,
-  type SpectrometerConfig,
+  type AnalysisRequest,
   type SensorId,
   ApiError,
 } from "../../infrastructure/api";
@@ -37,8 +37,8 @@ export const spectrometerKeys = {
  * Expone los estados de React Query junto con helpers tipados.
  */
 export interface UseAnalyzeSpectrumReturn {
-  /** Dispara la adquisición + análisis (MS-711 + MS-712 → fusión → PPFD + lux). */
-  analyze: () => void;
+  /** Dispara la adquisición y configuración atómica (MS-711, MS-712 o fusión). */
+  analyze: (request: AnalysisRequest) => void;
   /** Resultado tipado del análisis (disponible cuando isSuccess=true). */
   data: AnalysisResult | undefined;
   /** `true` mientras el hardware está procesando (hasta 5s de latencia física). */
@@ -54,79 +54,28 @@ export interface UseAnalyzeSpectrumReturn {
 }
 
 /**
- * Hook para ejecutar el pipeline completo de análisis espectral.
+ * Hook para ejecutar de forma atómica la configuración y medición del espectrómetro.
  *
  * Internamente usa `useMutation` porque el análisis es una acción
  * imperativa disparada por el usuario (no un fetch reactivo), y
  * porque el backend realiza I/O con el hardware (side-effect).
- *
- * React Query maneja automáticamente:
- * - `isPending`: ideal para mostrar un spinner durante los ~5s de latencia.
- * - `isError` + `error`: errores de red, timeout, o validación 422.
- * - `data`: resultado `AnalysisResult` fuertemente tipado.
- *
- * @example
- * ```tsx
- * function AnalysisPanel() {
- *   const { analyze, data, isPending, isError, error } = useAnalyzeSpectrum();
- *
- *   return (
- *     <>
- *       <button onClick={analyze} disabled={isPending}>
- *         {isPending ? "Midiendo..." : "Iniciar Análisis"}
- *       </button>
- *       {data && <SpectralGraph data={data.merged_spectrum} isLoading={false} />}
- *       {isError && <p>Error: {error?.message}</p>}
- *     </>
- *   );
- * }
- * ```
  */
 export function useAnalyzeSpectrum(): UseAnalyzeSpectrumReturn {
-  const mutation = useMutation<AnalysisResult, ApiError>({
+  const mutation = useMutation<AnalysisResult, ApiError, AnalysisRequest>({
     mutationKey: spectrometerKeys.analysis(),
-    mutationFn: () => apiClient.analyzeSpectra(),
+    mutationFn: (request) => apiClient.analyzeSpectra(request),
     // No reintentamos automáticamente: la latencia del hardware hace que
     // los reintentos sean costosos (hasta 10s por intento adicional).
     retry: false,
   });
 
   return {
-    analyze: () => mutation.mutate(),
+    analyze: (request: AnalysisRequest) => mutation.mutate(request),
     data: mutation.data,
     isPending: mutation.isPending,
     isError: mutation.isError,
     error: mutation.error,
     isSuccess: mutation.isSuccess,
-    reset: mutation.reset,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// useConfigureSensor — Mutation para configurar el equipo
-// ─────────────────────────────────────────────────────────────────────
-
-/**
- * Hook para enviar configuración al espectrorradiómetro.
- *
- * @example
- * ```tsx
- * const { configure, isPending } = useConfigureSensor();
- * configure({ sensor_id: "MS-711", exposure_time_ms: 500 });
- * ```
- */
-export function useConfigureSensor() {
-  const mutation = useMutation<boolean, ApiError, SpectrometerConfig>({
-    mutationFn: (config) => apiClient.configureSensor(config),
-    retry: false,
-  });
-
-  return {
-    configure: (config: SpectrometerConfig) => mutation.mutate(config),
-    isPending: mutation.isPending,
-    isError: mutation.isError,
-    isSuccess: mutation.isSuccess,
-    error: mutation.error,
     reset: mutation.reset,
   };
 }

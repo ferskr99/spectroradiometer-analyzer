@@ -4,23 +4,6 @@
  */
 
 export interface paths {
-    "/api/v1/sensors/config": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Configure Equipment */
-        post: operations["configure_equipment_api_v1_sensors_config_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/sensors/{sensor_id}/spectrum": {
         parameters: {
             query?: never;
@@ -49,9 +32,7 @@ export interface paths {
         put?: never;
         /**
          * Analyze Spectra
-         * @description Adquiere espectros de ambos sensores (MS-711 y MS-712), los fusiona,
-         *     y calcula PPFD e iluminancia. Toda la lógica matemática reside en
-         *     SpectralProcessorUseCase (capa de aplicación).
+         * @description Configura de forma atómica y adquiere los datos de los sensores solicitados.
          */
         post: operations["analyze_spectra_api_v1_sensors_analyze_post"];
         delete?: never;
@@ -64,6 +45,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AnalysisRequest
+         * @description Payload para iniciar una configuración y lectura atómica.
+         */
+        AnalysisRequest: {
+            /**
+             * Sensor Target
+             * @description Sensor a leer, o 'Merge' para adquirir y fusionar ambos.
+             * @enum {string}
+             */
+            sensor_target: "MS-711" | "MS-712" | "Merge";
+            /**
+             * Exposure Time Ms
+             * @description Tiempo de exposición para la lectura (10-5000ms).
+             * @default 10
+             */
+            exposure_time_ms: number;
+        };
         /**
          * AnalysisResult
          * @description Resultado del análisis espectral combinado MS-711 + MS-712.
@@ -110,16 +109,6 @@ export interface components {
              */
             irradiance: number[];
         };
-        /** SpectrometerConfig */
-        SpectrometerConfig: {
-            /** Sensor Id */
-            sensor_id: string;
-            /**
-             * Exposure Time Ms
-             * @default 10
-             */
-            exposure_time_ms: number;
-        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -142,39 +131,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    configure_equipment_api_v1_sensors_config_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SpectrometerConfig"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": boolean;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_spectrum_api_v1_sensors__sensor_id__spectrum_get: {
         parameters: {
             query?: never;
@@ -213,7 +169,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalysisRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -222,6 +182,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalysisResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

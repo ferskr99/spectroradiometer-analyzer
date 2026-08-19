@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import type { SensorId } from "../../infrastructure/api";
+import type { AnalysisRequest } from "../../infrastructure/api";
 
 // ─────────────────────────────────────────────────────────────────────
 // Constantes de dominio
@@ -20,7 +20,7 @@ const EXPOSURE_MAX = 5000;
 const EXPOSURE_DEFAULT = 100;
 
 /** Modos de operación del sensor. */
-type SensorMode = SensorId | "Merge";
+type SensorMode = "MS-711" | "MS-712" | "Merge";
 
 interface SensorOption {
   id: SensorMode;
@@ -59,9 +59,7 @@ const EXPOSURE_PRESETS = [10, 50, 100, 500, 1000, 2500, 5000] as const;
 
 export interface ControlPanelProps {
   /** Callback para iniciar la medición/análisis. */
-  onAnalyze: () => void;
-  /** Callback para configurar el sensor. */
-  onConfigure?: (sensorId: SensorId, exposureMs: number) => void;
+  onAnalyze: (request: AnalysisRequest) => void;
   /** `true` mientras el hardware está capturando (deshabilita controles). */
   isPending: boolean;
   /** `true` si la última medición fue exitosa. */
@@ -76,7 +74,6 @@ export interface ControlPanelProps {
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   onAnalyze,
-  onConfigure,
   isPending,
   isSuccess,
   errorMessage,
@@ -102,12 +99,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   );
 
   const handleMeasure = useCallback(() => {
-    // Configurar primero si hay callback y no es Merge
-    if (onConfigure && selectedSensor !== "Merge") {
-      onConfigure(selectedSensor, exposureMs);
-    }
-    onAnalyze();
-  }, [onAnalyze, onConfigure, selectedSensor, exposureMs]);
+    onAnalyze({ sensor_target: selectedSensor, exposure_time_ms: exposureMs });
+  }, [onAnalyze, selectedSensor, exposureMs]);
 
   return (
     <div style={styles.container}>

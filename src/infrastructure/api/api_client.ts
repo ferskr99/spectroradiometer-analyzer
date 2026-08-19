@@ -13,7 +13,7 @@ import type { components } from "./api-types";
 
 export type SensorId = "MS-711" | "MS-712";
 export type SpectralData = components["schemas"]["SpectralData"];
-export type SpectrometerConfig = components["schemas"]["SpectrometerConfig"];
+export type AnalysisRequest = components["schemas"]["AnalysisRequest"];
 export type AnalysisResult = components["schemas"]["AnalysisResult"];
 export type HTTPValidationError = components["schemas"]["HTTPValidationError"];
 
@@ -153,24 +153,6 @@ export class SpectroradiometerApiClient {
   // ─── Endpoints públicos (type-safe) ──────────────────────────────
 
   /**
-   * POST /api/v1/sensors/config
-   *
-   * Configura un espectrorradiómetro. El payload es estrictamente tipado:
-   * - `sensor_id` solo acepta `"MS-711"` o `"MS-712"` (compile-time).
-   * - `exposure_time_ms` debe estar en [10, 5000] (runtime vía backend).
-   *
-   * @param config — Configuración del sensor.
-   * @returns `true` si el equipo aceptó la configuración.
-   * @throws {ApiError} si el backend rechaza la configuración (422).
-   */
-  async configureSensor(config: SpectrometerConfig): Promise<boolean> {
-    return this.request<boolean>("/api/v1/sensors/config", {
-      method: "POST",
-      body: JSON.stringify(config),
-    });
-  }
-
-  /**
    * GET /api/v1/sensors/{sensor_id}/spectrum
    *
    * Adquiere el espectro crudo de un sensor específico.
@@ -191,16 +173,16 @@ export class SpectroradiometerApiClient {
   /**
    * POST /api/v1/sensors/analyze
    *
-   * Ejecuta el pipeline completo de análisis:
-   * 1. Adquiere espectros de MS-711 y MS-712.
-   * 2. Fusiona e interpola a 1nm.
-   * 3. Calcula PPFD (400-700nm) e iluminancia (380-780nm).
+   * Ejecuta el pipeline de análisis de forma atómica. Configura el hardware, 
+   * adquiere espectros y calcula PPFD e iluminancia.
    *
-   * @returns Resultado con espectro fusionado, PPFD (µmol/m²/s), e iluminancia (lux).
+   * @param request - Parámetros de configuración y objetivo de medición.
+   * @returns Resultado con espectro fusionado y cálculos radiométricos.
    */
-  async analyzeSpectra(): Promise<AnalysisResult> {
+  async analyzeSpectra(request: AnalysisRequest): Promise<AnalysisResult> {
     return this.request<AnalysisResult>("/api/v1/sensors/analyze", {
       method: "POST",
+      body: JSON.stringify(request),
     });
   }
 }

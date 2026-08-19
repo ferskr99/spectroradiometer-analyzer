@@ -11,7 +11,7 @@
 export type {
   SensorId,
   SpectralData,
-  SpectrometerConfig,
+  AnalysisRequest,
   AnalysisResult,
   HTTPValidationError,
 } from "./api_client";
