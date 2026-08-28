@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Activity, LayoutDashboard, History, Settings, Layers, Cpu } from 'lucide-react';
+import { Activity, LayoutDashboard, History, Settings, Layers, Cpu, Award, FileText } from 'lucide-react';
 import { SplashScreen } from './SplashScreen';
 
 export const Layout: React.FC = () => {
@@ -47,6 +47,28 @@ export const Layout: React.FC = () => {
             title="Salud y Diagnóstico"
           >
             <Cpu size={20} />
+          </NavLink>
+
+          <NavLink 
+            to="/calibration" 
+            style={({ isActive }) => ({
+              ...styles.navLink,
+              ...(isActive ? styles.navLinkActive : {})
+            })}
+            title="Calibración"
+          >
+            <Award size={20} />
+          </NavLink>
+
+          <NavLink 
+            to="/reports" 
+            style={({ isActive }) => ({
+              ...styles.navLink,
+              ...(isActive ? styles.navLinkActive : {})
+            })}
+            title="Reportes PDF"
+          >
+            <FileText size={20} />
           </NavLink>
         </div>
 

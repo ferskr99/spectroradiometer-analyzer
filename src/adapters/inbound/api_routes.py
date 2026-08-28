@@ -276,3 +276,217 @@ def export_history_batch_csv(ids: str, db: Session = Depends(get_db)):
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=seleccion_mediciones.csv"}
     )
+
+# ─────────────────────────────────────────────────────────────────────
+# Calibración
+# ─────────────────────────────────────────────────────────────────────
+
+@router.get("/calibration", tags=["Calibración"])
+def get_calibration_status():
+    """Retorna el estado actual de calibración de ambos sensores (simulado)."""
+    from datetime import datetime, timezone, timedelta
+
+    # Simulación: última calibración hace ~18 meses
+    last_cal_711 = datetime(2025, 2, 15, tzinfo=timezone.utc)
+    last_cal_712 = datetime(2025, 3, 20, tzinfo=timezone.utc)
+    cycle_days = 730  # 2 años
+
+    now = datetime.now(timezone.utc)
+
+    def calc_status(last_cal: datetime):
+        days_since = (now - last_cal).days
+        days_remaining = max(0, cycle_days - days_since)
+        progress_pct = min(100, round((days_since / cycle_days) * 100, 1))
+        if days_remaining > 180:
+            status = "valid"
+        elif days_remaining > 0:
+            status = "warning"
+        else:
+            status = "expired"
+        return {
+            "last_calibration": last_cal.isoformat(),
+            "next_calibration": (last_cal + timedelta(days=cycle_days)).isoformat(),
+            "days_remaining": days_remaining,
+            "days_since": days_since,
+            "progress_pct": progress_pct,
+            "status": status
+        }
+
+    return {
+        "ms711": {
+            **calc_status(last_cal_711),
+            "serial_number": "MS711-2024-0042",
+            "coefficients": [
+                {"wavelength_nm": 300, "sensitivity": 0.00215, "offset": -0.0003},
+                {"wavelength_nm": 400, "sensitivity": 0.00312, "offset": -0.0001},
+                {"wavelength_nm": 500, "sensitivity": 0.00298, "offset": 0.0000},
+                {"wavelength_nm": 600, "sensitivity": 0.00276, "offset": 0.0001},
+                {"wavelength_nm": 700, "sensitivity": 0.00241, "offset": -0.0002},
+                {"wavelength_nm": 800, "sensitivity": 0.00198, "offset": 0.0001},
+                {"wavelength_nm": 900, "sensitivity": 0.00165, "offset": -0.0001},
+                {"wavelength_nm": 1000, "sensitivity": 0.00132, "offset": 0.0002},
+                {"wavelength_nm": 1100, "sensitivity": 0.00108, "offset": -0.0001},
+            ]
+        },
+        "ms712": {
+            **calc_status(last_cal_712),
+            "serial_number": "MS712-2024-0018",
+            "coefficients": [
+                {"wavelength_nm": 900, "sensitivity": 0.00178, "offset": -0.0002},
+                {"wavelength_nm": 1000, "sensitivity": 0.00195, "offset": 0.0000},
+                {"wavelength_nm": 1100, "sensitivity": 0.00210, "offset": 0.0001},
+                {"wavelength_nm": 1200, "sensitivity": 0.00188, "offset": -0.0001},
+                {"wavelength_nm": 1300, "sensitivity": 0.00162, "offset": 0.0002},
+                {"wavelength_nm": 1400, "sensitivity": 0.00141, "offset": -0.0001},
+                {"wavelength_nm": 1500, "sensitivity": 0.00118, "offset": 0.0001},
+                {"wavelength_nm": 1600, "sensitivity": 0.00095, "offset": -0.0002},
+                {"wavelength_nm": 1700, "sensitivity": 0.00078, "offset": 0.0001},
+            ]
+        },
+        "calibration_history": [
+            {"date": "2025-03-20", "sensor": "MS-712", "performed_by": "EKO Instruments", "type": "Fábrica"},
+            {"date": "2025-02-15", "sensor": "MS-711", "performed_by": "EKO Instruments", "type": "Fábrica"},
+            {"date": "2023-01-10", "sensor": "MS-711", "performed_by": "Lab. Metrología UNMSM", "type": "Recalibración"},
+            {"date": "2023-01-10", "sensor": "MS-712", "performed_by": "Lab. Metrología UNMSM", "type": "Recalibración"},
+        ]
+    }
+
+@router.post("/calibration/upload", tags=["Calibración"])
+async def upload_calibration_file():
+    """Simulación de carga de archivo de calibración."""
+    return {"message": "Archivo de calibración procesado exitosamente (simulado)", "status": "ok"}
+
+# ─────────────────────────────────────────────────────────────────────
+# Reportes PDF
+# ─────────────────────────────────────────────────────────────────────
+
+@router.post("/reports/generate", tags=["Reportes"])
+def generate_report(
+    payload: dict,
+    db: Session = Depends(get_db)
+):
+    """Genera un informe PDF con las mediciones seleccionadas."""
+    from fpdf import FPDF
+    from datetime import datetime, timezone
+    import io
+
+    ids = payload.get("ids", [])
+    title = payload.get("title", "Informe de Mediciones Espectrales")
+    author = payload.get("author", "Investigador")
+    notes = payload.get("notes", "")
+
+    records = db.query(MeasurementRecord).filter(MeasurementRecord.id.in_(ids)).order_by(MeasurementRecord.timestamp.asc()).all()
+
+    if not records:
+        raise HTTPException(status_code=404, detail="No se encontraron registros con los IDs proporcionados")
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # ── Portada ──
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 24)
+    pdf.cell(0, 60, "", ln=True)
+    pdf.cell(0, 15, title, ln=True, align="C")
+    pdf.set_font("Helvetica", "", 14)
+    pdf.cell(0, 10, "Spectroradiometer Analyzer - EKO MS-711 / MS-712", ln=True, align="C")
+    pdf.cell(0, 20, "", ln=True)
+    pdf.set_font("Helvetica", "", 12)
+    pdf.cell(0, 8, f"Autor: {author}", ln=True, align="C")
+    pdf.cell(0, 8, f"Fecha de generación: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}", ln=True, align="C")
+    pdf.cell(0, 8, f"Mediciones incluidas: {len(records)}", ln=True, align="C")
+
+    if notes:
+        pdf.cell(0, 20, "", ln=True)
+        pdf.set_font("Helvetica", "I", 11)
+        pdf.multi_cell(0, 7, f"Notas: {notes}", align="C")
+
+    # ── Tabla de Resumen ──
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 12, "Resumen de Mediciones", ln=True)
+    pdf.ln(5)
+
+    # Cabeceras
+    pdf.set_font("Helvetica", "B", 9)
+    col_widths = [15, 45, 25, 20, 25, 25, 35]
+    headers = ["ID", "Fecha/Hora", "Sensor", "Exp(ms)", "PAR(W/m²)", "PPFD", "Irr.Total(W/m²)"]
+    for i, h in enumerate(headers):
+        pdf.cell(col_widths[i], 8, h, border=1, align="C")
+    pdf.ln()
+
+    # Filas
+    pdf.set_font("Helvetica", "", 8)
+    for r in records:
+        pdf.cell(col_widths[0], 7, str(r.id), border=1, align="C")
+        ts = r.timestamp.strftime("%Y-%m-%d %H:%M") if r.timestamp else "N/A"
+        pdf.cell(col_widths[1], 7, ts, border=1, align="C")
+        pdf.cell(col_widths[2], 7, str(r.sensor_target), border=1, align="C")
+        pdf.cell(col_widths[3], 7, str(r.exposure_time_ms), border=1, align="C")
+        pdf.cell(col_widths[4], 7, f"{r.par:.4f}", border=1, align="C")
+        pdf.cell(col_widths[5], 7, f"{r.ppfd:.4f}", border=1, align="C")
+        pdf.cell(col_widths[6], 7, f"{r.total_irradiance:.4f}", border=1, align="C")
+        pdf.ln()
+
+    # ── Detalle por medición ──
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    for r in records:
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.cell(0, 10, f"Medición #{r.id}", ln=True)
+        pdf.set_font("Helvetica", "", 11)
+        ts = r.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC") if r.timestamp else "N/A"
+        pdf.cell(0, 7, f"Fecha: {ts}", ln=True)
+        pdf.cell(0, 7, f"Sensor: {r.sensor_target}  |  Exposición: {r.exposure_time_ms} ms", ln=True)
+        pdf.ln(5)
+
+        # Métricas
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 8, "Resultados Radiométricos", ln=True)
+        pdf.set_font("Helvetica", "", 11)
+        pdf.cell(0, 7, f"  PAR: {r.par:.4f} W/m²", ln=True)
+        pdf.cell(0, 7, f"  PPFD: {r.ppfd:.4f} µmol/m²/s", ln=True)
+        pdf.cell(0, 7, f"  Iluminancia: {r.illuminance:.2f} lux", ln=True)
+        pdf.cell(0, 7, f"  Irradiancia Total: {r.total_irradiance:.4f} W/m²", ln=True)
+        pdf.ln(5)
+
+        # Generar gráfica espectral
+        spectrum = r.get_spectrum()
+        if spectrum and 'wavelengths' in spectrum and 'irradiance' in spectrum:
+            fig, ax = plt.subplots(figsize=(8, 4))
+            ax.plot(spectrum['wavelengths'], spectrum['irradiance'], color='#3b82f6', linewidth=1.5)
+            ax.set_title("Distribución de Irradiancia Espectral", fontsize=10)
+            ax.set_xlabel("Longitud de Onda (nm)", fontsize=9)
+            ax.set_ylabel("Irradiancia (W/m²/µm)", fontsize=9)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            plt.tight_layout()
+
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=150)
+            plt.close(fig)
+            buf.seek(0)
+
+            # Insertar imagen en el PDF
+            pdf.image(buf, w=170)
+        else:
+            pdf.set_font("Helvetica", "I", 10)
+            pdf.cell(0, 10, "(Datos espectrales no disponibles para graficar)", ln=True)
+
+    # ── Pie de reporte ──
+    pdf.add_page()
+    pdf.set_font("Helvetica", "I", 10)
+    pdf.cell(0, 60, "", ln=True)
+    pdf.cell(0, 8, "Este informe fue generado automáticamente por Spectroradiometer Analyzer v1.0.0", ln=True, align="C")
+    pdf.cell(0, 8, "EKO Instruments - Espectrorradiómetros MS-711 / MS-712", ln=True, align="C")
+
+    # Generar bytes
+    pdf_bytes = pdf.output()
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=informe_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"}
+    )

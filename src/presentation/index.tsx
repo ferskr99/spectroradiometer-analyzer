@@ -7,6 +7,8 @@ import { Dashboard } from "./pages/Dashboard";
 import { HistoryView } from "./pages/HistoryView";
 import { SettingsView } from "./pages/SettingsView";
 import { DiagnosticsView } from "./pages/DiagnosticsView";
+import { CalibrationView } from "./pages/CalibrationView";
+import { ReportsView } from "./pages/ReportsView";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +26,8 @@ root.render(
             <Route index element={<Dashboard />} />
             <Route path="history" element={<HistoryView />} />
             <Route path="diagnostics" element={<DiagnosticsView />} />
+            <Route path="calibration" element={<CalibrationView />} />
+            <Route path="reports" element={<ReportsView />} />
             <Route path="settings" element={<SettingsView />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

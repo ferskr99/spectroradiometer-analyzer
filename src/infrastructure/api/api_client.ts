@@ -295,6 +295,58 @@ export class SpectroradiometerApiClient {
     const idsParam = recordIds.join(",");
     return `${this.baseUrl}/api/v1/sensors/history/export/batch/csv?ids=${idsParam}`;
   }
+
+  // ─── Calibración ──────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/sensors/calibration
+   *
+   * Obtiene el estado de calibración de ambos sensores.
+   */
+  async getCalibrationStatus(): Promise<any> {
+    return this.request<any>(
+      `/api/v1/sensors/calibration`,
+      { method: "GET" },
+    );
+  }
+
+  // ─── Reportes ─────────────────────────────────────────────────────
+
+  /**
+   * POST /api/v1/sensors/reports/generate
+   *
+   * Genera un informe PDF y retorna la URL del blob para descarga.
+   */
+  async generateReport(payload: { ids: number[]; title: string; author: string; notes: string }): Promise<Blob> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/sensors/reports/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new ApiError(
+          `API error ${response.status}: ${response.statusText}`,
+          response.status,
+        );
+      }
+
+      return await response.blob();
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(
+        `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        0,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────
