@@ -1,11 +1,11 @@
 import os
 # ERROR CORREGIDO: Se eliminó 'from fastapi import Depends'
 from src.domain.ports.hardware_port import SpectroradiometerPort
-from src.adapters.outbound.fake_adapter import FakeEkoAdapter
+from src.adapters.outbound.fake_adapter import FakeSpectroradiometerAdapter
 from src.adapters.outbound.serial_adapter import EkoSerialAdapter
 
 # MEJORA: Tipado estricto forzando la interfaz abstracta (Liskov Substitution Principle)
-_fake_adapter: SpectroradiometerPort = FakeEkoAdapter()
+_fake_adapter: SpectroradiometerPort = FakeSpectroradiometerAdapter()
 _serial_adapter: SpectroradiometerPort = EkoSerialAdapter(baudrate=9600, timeout=2)
 
 def get_hardware_adapter() -> SpectroradiometerPort:

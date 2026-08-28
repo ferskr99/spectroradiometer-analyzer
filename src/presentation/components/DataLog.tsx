@@ -6,12 +6,18 @@ interface DataLogProps {
   fullHeight?: boolean;
   selectedRecordId?: number | null;
   onSelectRecord?: (id: number) => void;
+  multiSelect?: boolean;
+  selectedRecordIds?: number[];
+  onToggleRecordSelection?: (id: number, selected: boolean) => void;
 }
 
 export const DataLog: React.FC<DataLogProps> = ({ 
   fullHeight = false,
   selectedRecordId = null,
-  onSelectRecord
+  onSelectRecord,
+  multiSelect = false,
+  selectedRecordIds = [],
+  onToggleRecordSelection
 }) => {
   const [history, setHistory] = useState<MeasurementRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,9 +46,14 @@ export const DataLog: React.FC<DataLogProps> = ({
     };
   }, []);
 
+  const hasSelection = multiSelect && selectedRecordIds.length > 0;
+
   const handleExport = () => {
-    // Disparar descarga navegando a la URL del backend
-    window.location.href = apiClient.getHistoryCsvUrl();
+    if (hasSelection) {
+      window.location.href = apiClient.getHistoryBatchCsvUrl(selectedRecordIds);
+    } else {
+      window.location.href = apiClient.getHistoryCsvUrl();
+    }
   };
 
   return (
@@ -56,9 +67,12 @@ export const DataLog: React.FC<DataLogProps> = ({
           <button onClick={fetchHistory} style={styles.iconButton} title="Refrescar">
             <RefreshCcw size={14} />
           </button>
-          <button onClick={handleExport} style={styles.exportButton}>
+          <button 
+            onClick={handleExport} 
+            style={{...styles.exportButton, ...(hasSelection ? styles.exportButtonActive : {})}}
+          >
             <Download size={14} />
-            Exportar Historial a CSV
+            {hasSelection ? `Exportar Selección (${selectedRecordIds.length})` : "Exportar Todo a CSV"}
           </button>
         </div>
       </div>
@@ -72,6 +86,7 @@ export const DataLog: React.FC<DataLogProps> = ({
           <table style={styles.table}>
             <thead>
               <tr>
+                {multiSelect && <th style={{...styles.th, width: 40}}></th>}
                 <th style={styles.th}>ID</th>
                 <th style={styles.th}>Fecha y Hora</th>
                 <th style={styles.th}>Modo</th>
@@ -83,17 +98,34 @@ export const DataLog: React.FC<DataLogProps> = ({
             </thead>
             <tbody>
               {history.map((record) => {
-                const isActive = selectedRecordId === record.id;
+                const isActive = multiSelect ? selectedRecordIds.includes(record.id) : selectedRecordId === record.id;
                 return (
                   <tr 
                     key={record.id} 
                     style={{
                       ...styles.tr,
-                      ...(onSelectRecord ? styles.trClickable : {}),
+                      ...((onSelectRecord || multiSelect) ? styles.trClickable : {}),
                       ...(isActive ? styles.trActive : {})
                     }}
-                    onClick={() => onSelectRecord?.(record.id)}
+                    onClick={() => {
+                      if (multiSelect && onToggleRecordSelection) {
+                        onToggleRecordSelection(record.id, !isActive);
+                      } else if (onSelectRecord) {
+                        onSelectRecord(record.id);
+                      }
+                    }}
                   >
+                    {multiSelect && (
+                      <td style={styles.tdCheckbox}>
+                        <input 
+                          type="checkbox" 
+                          checked={isActive} 
+                          onChange={(e) => onToggleRecordSelection?.(record.id, e.target.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={styles.checkbox}
+                        />
+                      </td>
+                    )}
                     <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>#{record.id}</td>
                     <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>
                       {new Date(record.timestamp.endsWith('Z') ? record.timestamp : record.timestamp + 'Z').toLocaleString("es-MX", {
@@ -165,15 +197,20 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 8,
     padding: "8px 16px",
-    backgroundColor: "#3b82f6",
-    color: "#ffffff",
-    border: "none",
+    backgroundColor: "#333333",
+    color: "#e0e0e0",
+    border: "1px solid #444444",
     borderRadius: 4,
     fontSize: 12,
     fontWeight: 600,
     cursor: "pointer",
-    transition: "background 0.2s",
+    transition: "all 0.2s",
     whiteSpace: "nowrap",
+  },
+  exportButtonActive: {
+    backgroundColor: "#3b82f6",
+    color: "#ffffff",
+    borderColor: "#3b82f6",
   },
   tableContainer: {
     overflowX: "auto",
@@ -227,6 +264,17 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
     color: "#666666",
     fontSize: 13,
+  },
+  tdCheckbox: {
+    padding: "10px 14px",
+    width: 40,
+    textAlign: "center",
+  },
+  checkbox: {
+    cursor: "pointer",
+    width: 16,
+    height: 16,
+    accentColor: "#3b82f6",
   },
 };
 

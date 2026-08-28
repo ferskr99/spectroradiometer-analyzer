@@ -222,12 +222,78 @@ export class SpectroradiometerApiClient {
   }
 
   /**
+   * GET /api/v1/sensors/history/batch?ids=...
+   *
+   * Obtiene el detalle de múltiples mediciones de una sola vez.
+   * Retorna un diccionario donde la llave es el ID del registro y el valor es el AnalysisResult.
+   */
+  async getHistoryBatch(recordIds: number[]): Promise<Record<string, AnalysisResult>> {
+    const idsParam = recordIds.join(",");
+    return this.request<Record<string, AnalysisResult>>(
+      `/api/v1/sensors/history/batch?ids=${idsParam}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * GET /api/v1/sensors/health
+   *
+   * Obtiene la telemetría de salud de los sensores (temperaturas, voltajes).
+   */
+  async getHealth(): Promise<any> {
+    return this.request<any>(
+      `/api/v1/sensors/health`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * GET /api/v1/sensors/scheduler/status
+   */
+  async getSchedulerStatus(): Promise<{is_running: boolean, interval_minutes: number}> {
+    return this.request<{is_running: boolean, interval_minutes: number}>(
+      `/api/v1/sensors/scheduler/status`,
+      { method: "GET" }
+    );
+  }
+
+  /**
+   * POST /api/v1/sensors/scheduler/start
+   */
+  async startScheduler(intervalMinutes: number): Promise<any> {
+    return this.request<any>(
+      `/api/v1/sensors/scheduler/start?interval_minutes=${intervalMinutes}`,
+      { method: "POST" }
+    );
+  }
+
+  /**
+   * POST /api/v1/sensors/scheduler/stop
+   */
+  async stopScheduler(): Promise<any> {
+    return this.request<any>(
+      `/api/v1/sensors/scheduler/stop`,
+      { method: "POST" }
+    );
+  }
+
+  /**
    * GET /api/v1/sensors/history/export/csv
    *
    * Obtiene la URL absoluta para descargar el CSV del historial.
    */
   getHistoryCsvUrl(): string {
     return `${this.baseUrl}/api/v1/sensors/history/export/csv`;
+  }
+
+  /**
+   * GET /api/v1/sensors/history/export/batch/csv
+   *
+   * Obtiene la URL absoluta para descargar el CSV de una selección de registros.
+   */
+  getHistoryBatchCsvUrl(recordIds: number[]): string {
+    const idsParam = recordIds.join(",");
+    return `${this.baseUrl}/api/v1/sensors/history/export/batch/csv?ids=${idsParam}`;
   }
 }
 

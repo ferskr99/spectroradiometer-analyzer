@@ -3,7 +3,7 @@ import numpy as np
 from src.domain.ports.hardware_port import SpectroradiometerPort
 from src.domain.models import SpectrometerConfig, SpectralData
 
-class FakeEkoAdapter(SpectroradiometerPort):
+class FakeSpectroradiometerAdapter(SpectroradiometerPort):
     """
     Simulador en memoria para los espectrorradiómetros.
     Ideal para tests unitarios y desarrollo del Frontend en React.
@@ -17,15 +17,18 @@ class FakeEkoAdapter(SpectroradiometerPort):
         return True
 
     async def configure_sensor(self, config: SpectrometerConfig) -> bool:
-        # El equipo real acepta tiempos de exposición entre 10 y 5000 ms[cite: 1].
+        # Extrae el exposure_time_ms (cuyo rango válido es de 10 a 5000 milisegundos)
+        if config.exposure_time_ms < 10 or config.exposure_time_ms > 5000:
+            raise ValueError("El tiempo de exposición debe estar entre 10 y 5000 milisegundos.")
+        
         self.exposure_time_ms = config.exposure_time_ms
+        
+        # Emular el tiempo físico real en el que el obturador permanece abierto
+        await asyncio.sleep(self.exposure_time_ms / 1000.0)
         return True
 
     async def read_spectrum(self, sensor_id: str) -> SpectralData:
-        # Simulamos el tiempo de bloqueo I/O del espectrómetro real
-        await asyncio.sleep(self.exposure_time_ms / 1000.0)
-
-        # Respetamos los rangos físicos y resoluciones de los equipos[cite: 1]
+        # Límites Físicos de Longitud de Onda
         if sensor_id == "MS-711":
             wavelengths = np.arange(300.0, 1100.0, 0.5) 
         elif sensor_id == "MS-712":
@@ -33,7 +36,8 @@ class FakeEkoAdapter(SpectroradiometerPort):
         else:
             raise ValueError("Identificador de sensor desconocido.")
 
-        # Generamos una distribución sintética de irradiancia espectral con ruido gaussiano
+        # Generación de Espectros Crudos en unidades de irradiancia absoluta (W/m²/μm)
+        # Curva de distribución gaussiana + ruido blanco (random noise)
         irradiance = 1000 * np.exp(-0.5 * ((wavelengths - 500) / 100)**2) 
         irradiance += np.random.normal(0, 2, len(wavelengths))
 

@@ -1,31 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { DataLog } from '../components/DataLog';
 import { SpectralGraph } from '../components/SpectralGraph';
+import { SuperimposedGraph } from '../components/SuperimposedGraph';
 import { apiClient, AnalysisResult } from '../../infrastructure/api/api_client';
 import { Activity } from 'lucide-react';
 
 export const HistoryView: React.FC = () => {
-  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
-  const [recordDetail, setRecordDetail] = useState<AnalysisResult | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [dataDict, setDataDict] = useState<Record<string, AnalysisResult>>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!selectedRecordId) return;
+  const handleToggleSelection = (id: number, selected: boolean) => {
+    setSelectedIds((prev) => {
+      if (selected) {
+        if (prev.length >= 10) return prev;
+        return [...prev, id];
+      } else {
+        return prev.filter((item) => item !== id);
+      }
+    });
+  };
 
-    const fetchDetail = async () => {
+  useEffect(() => {
+    const fetchBatch = async () => {
+      if (selectedIds.length === 0) {
+        setDataDict({});
+        return;
+      }
+
       setIsLoading(true);
       try {
-        const detail = await apiClient.getHistoryDetail(selectedRecordId);
-        setRecordDetail(detail);
+        const results = await apiClient.getHistoryBatch(selectedIds);
+        setDataDict(results);
       } catch (error) {
-        console.error("Error fetching record detail:", error);
+        console.error("Error fetching batch history", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchDetail();
-  }, [selectedRecordId]);
+    fetchBatch();
+  }, [selectedIds]);
+
+  const hasSelection = selectedIds.length > 0;
+  const isSingleSelection = selectedIds.length === 1;
+  const singleRecordDetail = isSingleSelection ? dataDict[selectedIds[0]] : null;
 
   return (
     <main style={styles.main}>
@@ -37,31 +56,34 @@ export const HistoryView: React.FC = () => {
           }
         `}
       </style>
-      <div style={{...styles.layout, ...(selectedRecordId ? styles.layoutSplit : styles.layoutFull)}}>
+      <div style={{...styles.layout, ...(hasSelection ? styles.layoutSplit : styles.layoutFull)}}>
         {/* Left Column: DataLog */}
         <div style={styles.leftColumn}>
           <DataLog 
             fullHeight={true} 
-            selectedRecordId={selectedRecordId}
-            onSelectRecord={setSelectedRecordId}
+            multiSelect={true}
+            selectedRecordIds={selectedIds}
+            onToggleRecordSelection={handleToggleSelection}
           />
         </div>
 
-        {/* Right Column: Detail View (only shown if a record is selected) */}
-        {selectedRecordId && (
+        {/* Right Column: Detail View (only shown if records are selected) */}
+        {hasSelection && (
           <div style={styles.rightColumn}>
             
             <div style={styles.detailHeaderCard}>
               <h3 style={styles.detailTitle}>
-                Espectro de la Medición #{selectedRecordId}
+                {isSingleSelection 
+                  ? `Espectro de la Medición #${selectedIds[0]}` 
+                  : `Comparación Espectral (${selectedIds.length} seleccionadas)`}
               </h3>
               <button 
                 style={styles.closeButton} 
                 onClick={() => {
-                  setSelectedRecordId(null);
-                  setRecordDetail(null);
+                  setSelectedIds([]);
+                  setDataDict({});
                 }}
-                title="Cerrar detalles"
+                title="Limpiar selección"
               >
                 ✕
               </button>
@@ -70,29 +92,37 @@ export const HistoryView: React.FC = () => {
             {isLoading ? (
               <div style={styles.loadingState}>
                 <Activity size={24} className="spin" color="#666666" />
-                <span>Cargando espectro...</span>
+                <span>Procesando datos espectrales...</span>
               </div>
             ) : (
               <div style={styles.graphContainer}>
-                <SpectralGraph 
-                  data={recordDetail?.merged_spectrum ?? null} 
-                  isLoading={false} 
-                  height={450} 
-                />
+                {isSingleSelection ? (
+                  <SpectralGraph 
+                    data={singleRecordDetail?.merged_spectrum ?? null} 
+                    isLoading={false} 
+                    height={450} 
+                  />
+                ) : (
+                  <SuperimposedGraph 
+                    dataDict={dataDict} 
+                    isLoading={false} 
+                    height={450} 
+                  />
+                )}
                 
-                {recordDetail && (
+                {isSingleSelection && singleRecordDetail && (
                   <div style={styles.metricsGrid}>
                     <div style={styles.metricBox}>
                       <div style={styles.metricLabel}>PAR</div>
-                      <div style={styles.metricValue}>{recordDetail.par.toFixed(2)} W/m²</div>
+                      <div style={styles.metricValue}>{singleRecordDetail.par.toFixed(2)} W/m²</div>
                     </div>
                     <div style={styles.metricBox}>
                       <div style={styles.metricLabel}>PPFD</div>
-                      <div style={styles.metricValue}>{recordDetail.ppfd.toFixed(2)} µmol</div>
+                      <div style={styles.metricValue}>{singleRecordDetail.ppfd.toFixed(2)} µmol</div>
                     </div>
                     <div style={styles.metricBox}>
                       <div style={styles.metricLabel}>Iluminancia</div>
-                      <div style={styles.metricValue}>{Math.round(recordDetail.illuminance)} lx</div>
+                      <div style={styles.metricValue}>{Math.round(singleRecordDetail.illuminance)} lx</div>
                     </div>
                   </div>
                 )}
@@ -109,10 +139,10 @@ const styles: Record<string, React.CSSProperties> = {
   main: {
     display: "flex",
     flexDirection: "column",
-    padding: "24px", // Remove max-width completely to use 100% of the monitor
+    padding: "24px",
     flex: 1,
-    height: "calc(100vh - 48px)", // Viewport minus header
-    overflow: "hidden", // Ensure main never scrolls, delegating scrolling to the table
+    height: "calc(100vh - 48px)",
+    overflow: "hidden",
   },
   layout: {
     display: "flex",
@@ -125,22 +155,22 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "row",
   },
   layoutSplit: {
-    flexDirection: "row", // Side by side
+    flexDirection: "row",
   },
   leftColumn: {
-    flex: 1.4, // Give the table significantly more space so all columns fit
+    flex: 1.4,
     display: "flex",
     flexDirection: "column",
-    minWidth: 700, // Ensure the table doesn't compress
+    minWidth: 700,
     minHeight: 0,
     transition: "flex 0.3s ease",
   },
   rightColumn: {
-    flex: 1, // Graph takes the rest
+    flex: 1,
     display: "flex",
     flexDirection: "column",
     gap: 16,
-    minWidth: 450, // Minimum for graph
+    minWidth: 450,
     minHeight: 0,
     animation: "slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
   },

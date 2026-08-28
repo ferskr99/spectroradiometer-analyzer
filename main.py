@@ -9,6 +9,9 @@ from src.adapters.inbound.api_routes import router as sensors_router
 from src.infrastructure.db.database import engine, Base
 import src.infrastructure.db.models  # Import to register models
 from src.application.backup_service import BackupService
+from src.application.scheduler_service import SchedulerService
+from src.infrastructure.db.database import SessionLocal
+from src.application.dependencies import get_hardware_adapter
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,19 +20,22 @@ Base.metadata.create_all(bind=engine)
 
 async def auto_backup_loop():
     while True:
-        # Dormir 24 horas (86400 segundos) ANTES del primer backup (o DESPUÉS, dependiendo del caso).
-        # Haremos el primer backup de inmediato, y luego dormiremos 24h.
-        await asyncio.sleep(5) # Pequeña espera para que inicie la app correctamente
+        await asyncio.sleep(5) 
         BackupService.perform_backup()
-        await asyncio.sleep(86400) # 24 horas
+        await asyncio.sleep(86400) 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Setup Scheduler
+    adapter = get_hardware_adapter()
+    SchedulerService.setup(adapter, SessionLocal)
+
     # Iniciar la tarea en segundo plano al arrancar
     task = asyncio.create_task(auto_backup_loop())
     yield
     # Limpiar al apagar
     task.cancel()
+    SchedulerService.stop()
 
 app = FastAPI(
     title="Spectroradiometer Analyzer API",

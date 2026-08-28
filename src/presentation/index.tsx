@@ -1,10 +1,12 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { HistoryView } from "./pages/HistoryView";
+import { SettingsView } from "./pages/SettingsView";
+import { DiagnosticsView } from "./pages/DiagnosticsView";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +23,9 @@ root.render(
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="history" element={<HistoryView />} />
+            <Route path="diagnostics" element={<DiagnosticsView />} />
+            <Route path="settings" element={<SettingsView />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

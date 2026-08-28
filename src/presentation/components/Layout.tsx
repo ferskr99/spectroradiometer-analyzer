@@ -1,10 +1,12 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Activity, LayoutDashboard, History, Settings } from 'lucide-react';
+import { Activity, LayoutDashboard, History, Settings, Layers, Cpu } from 'lucide-react';
+import { SplashScreen } from './SplashScreen';
 
 export const Layout: React.FC = () => {
   return (
     <div style={styles.page}>
+      <SplashScreen />
       <style>{globalCSS}</style>
       
       {/* Sidebar Navigation */}
@@ -35,12 +37,30 @@ export const Layout: React.FC = () => {
           >
             <History size={20} />
           </NavLink>
+
+          <NavLink 
+            to="/diagnostics" 
+            style={({ isActive }) => ({
+              ...styles.navLink,
+              ...(isActive ? styles.navLinkActive : {})
+            })}
+            title="Salud y Diagnóstico"
+          >
+            <Cpu size={20} />
+          </NavLink>
         </div>
 
         <div style={styles.bottomSection}>
-          <div style={styles.navLink} title="Instrumento: EKO MS-711 / MS-712">
+          <NavLink 
+            to="/settings" 
+            style={({ isActive }) => ({
+              ...styles.navLink,
+              ...(isActive ? styles.navLinkActive : {})
+            })}
+            title="Configuración"
+          >
             <Settings size={20} />
-          </div>
+          </NavLink>
         </div>
       </nav>
 
