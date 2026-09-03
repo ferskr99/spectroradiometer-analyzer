@@ -10,9 +10,13 @@ import { useAnalyzeSpectrum } from "../../application/hooks/useSpectrometer";
 import { ControlPanel } from "../components/ControlPanel";
 import { MetricsSummary } from "../components/MetricsSummary";
 import { SpectralGraph } from "../components/SpectralGraph";
+import { ContinuousSchedulerPanel } from "../components/ContinuousSchedulerPanel";
 import { Clock, FileText, AlertCircle } from "lucide-react";
+import { useState } from "react";
 
 export const Dashboard: React.FC = () => {
+  const [sensorTarget, setSensorTarget] = useState<"MS-711" | "MS-712" | "Merge">("Merge");
+  const [exposureTime, setExposureTime] = useState(100);
   const {
     analyze,
     data,
@@ -24,13 +28,21 @@ export const Dashboard: React.FC = () => {
 
   return (
     <main style={styles.main}>
-      {/* 1. Panel de Control (Horizontal) */}
-      <ControlPanel
-        onAnalyze={analyze}
-        isPending={isPending}
-        isSuccess={isSuccess}
-        errorMessage={isError ? error?.message ?? "Error de medición" : null}
-      />
+      {/* 1. Fila Superior (Control + Scheduler) */}
+      <div style={styles.topRow}>
+        <ControlPanel
+          onAnalyze={analyze}
+          isPending={isPending}
+          isSuccess={isSuccess}
+          errorMessage={isError ? error?.message ?? "Error de medición" : null}
+          sensorTarget={sensorTarget}
+          onSensorTargetChange={setSensorTarget}
+          exposureTime={exposureTime}
+          onExposureTimeChange={setExposureTime}
+        />
+        <ContinuousSchedulerPanel />
+      </div>
+
 
       {/* 2. Tarjetas de Métricas (Fila Horizontal) */}
       <MetricsSummary
@@ -85,16 +97,23 @@ const styles: Record<string, React.CSSProperties> = {
   main: {
     display: "flex",
     flexDirection: "column",
-    gap: 24,
-    padding: "32px",
+    gap: 16,
+    padding: "20px 32px",
     flex: 1,
     minHeight: 0,
     backgroundColor: "#111111",
+  },
+  topRow: {
+    display: "flex",
+    gap: 16,
+    alignItems: "stretch",
   },
   graphWrapper: {
     display: "flex",
     flexDirection: "column",
     gap: 16,
+    flex: 1,
+    minHeight: 0,
   },
   statusBar: {
     display: "flex",

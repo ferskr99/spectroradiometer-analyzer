@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -10,7 +10,8 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { AnalysisResult } from "../../infrastructure/api/api_client";
-import { Loader2, Activity } from "lucide-react";
+import { Activity, Maximize2, Loader2 } from "lucide-react";
+import { ExpandedGraphModal } from "./ExpandedGraphModal";
 
 export interface SuperimposedGraphProps {
   dataDict: Record<string, AnalysisResult>;
@@ -21,18 +22,12 @@ export interface SuperimposedGraphProps {
 const PAR_START = 400;
 const PAR_END = 700;
 
-// Paleta de 10 colores estándar para superposición (según manual EKO)
 const COLOR_TABLE = [
-  "#ef4444", // Red
-  "#f97316", // Orange
-  "#eab308", // Yellow
-  "#84cc16", // Yellow Green
-  "#22c55e", // Green
-  "#10b981", // Light Green
-  "#06b6d4", // Light Blue
-  "#3b82f6", // Blue
-  "#312e81", // Navy
-  "#8b5cf6", // Purple
+  "#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e",
+  "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6",
+  "#d946ef", "#f43f5e", "#fbbf24", "#a3e635", "#34d399",
+  "#2dd4bf", "#38bdf8", "#818cf8", "#a78bfa", "#e879f9",
+  "#fb7185", "#fca5a5", "#fdba74", "#bef264", "#6ee7b7",
 ];
 
 const LoadingOverlay: React.FC = () => (
@@ -71,11 +66,13 @@ const CustomTooltip: React.FC<{
         λ = {wavelength.toFixed(0)} nm
         <span style={styles.tooltipRegion}>{region}</span>
       </p>
-      {payload.map((entry) => (
-        <p key={entry.name} style={{ ...styles.tooltipValue, color: entry.color }}>
-          ID #{entry.name}: {Number(entry.value).toFixed(3)} W/m²/µm
-        </p>
-      ))}
+      <div style={{ maxHeight: 200, overflowY: "auto", paddingRight: 4 }}>
+        {payload.map((entry) => (
+          <p key={entry.name} style={{ ...styles.tooltipValue, color: entry.color }}>
+            ID #{entry.name}: {Number(entry.value).toFixed(3)} W/m²/µm
+          </p>
+        ))}
+      </div>
     </div>
   );
 };
@@ -92,12 +89,9 @@ export const SuperimposedGraph: React.FC<SuperimposedGraphProps> = ({
     const firstItem = dataDict[keys[0]];
     if (!firstItem || !firstItem.merged_spectrum) return { chartData: [], dataKeys: [] };
 
-    // Asumimos que todos los espectros tienen las mismas longitudes de onda base 
-    // (están interpolados a 1nm por defecto o usan el mismo grid del sensor)
     const baseWavelengths = firstItem.merged_spectrum.wavelengths;
     const points: any[] = [];
 
-    // Para optimizar en Recharts, iteramos saltando de 2 en 2 si hay demasiados puntos
     for (let i = 0; i < baseWavelengths.length; i += 2) {
       const point: any = { wavelength: baseWavelengths[i] };
       keys.forEach((key) => {
@@ -112,98 +106,136 @@ export const SuperimposedGraph: React.FC<SuperimposedGraphProps> = ({
     return { chartData: points, dataKeys: keys };
   }, [dataDict]);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const dynamicYMax = useMemo(() => {
+    if (chartData.length === 0) return 10;
+    
+    let globalMax = 0;
+    chartData.forEach(point => {
+      dataKeys.forEach(key => {
+        if (point[key] && point[key] > globalMax) {
+          globalMax = point[key];
+        }
+      });
+    });
+    
+    return globalMax === 0 ? 10 : Math.ceil(globalMax * 1.05);
+  }, [chartData, dataKeys]);
+
   if (dataKeys.length === 0 && !isLoading) {
     return <EmptyState height={height} />;
   }
 
   return (
-    <div style={{ ...styles.container, height }}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>Superposición Espectral Múltiple</h3>
-        {dataKeys.length > 0 && (
-          <span style={styles.meta}>
-            {dataKeys.length} mediciones seleccionadas
-          </span>
-        )}
-      </div>
+    <>
+      <div style={{ ...styles.container, height }}>
+        <div style={styles.header}>
+          <h3 style={styles.title}>Superposición Histórica</h3>
+          <div style={styles.actions}>
+            <button 
+              style={styles.actionBtn} 
+              onClick={() => setIsModalOpen(true)}
+              title="Expandir gráfico"
+            >
+              <Maximize2 size={16} color="#888888" />
+            </button>
+          </div>
+        </div>
 
-      <div style={styles.chartWrapper}>
-        <ResponsiveContainer width="100%" height={height - 60}>
-          <LineChart
-            data={chartData}
-            margin={{ top: 25, right: 30, left: 20, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
+        <div style={styles.chartWrapper}>
+          <ResponsiveContainer width="100%" height={height - 110}>
+            <LineChart
+              data={chartData}
+              margin={{ top: 25, right: 30, left: 20, bottom: 35 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
 
-            <XAxis
-              dataKey="wavelength"
-              type="number"
-              domain={[300, 1700]}
-              tickCount={15}
-              tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
-              axisLine={{ stroke: "#333333" }}
-              label={{
-                value: "Longitud de onda (nm)",
-                position: "insideBottom",
-                offset: -10,
-                style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
-              }}
-            />
-
-            <YAxis
-              tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
-              axisLine={{ stroke: "#333333" }}
-              tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}
-              label={{
-                value: "Irradiancia (W/m²/µm)",
-                angle: -90,
-                position: "insideLeft",
-                offset: 0,
-                style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
-              }}
-            />
-
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#444', strokeWidth: 1, strokeDasharray: '4 4' }} />
-
-            <ReferenceLine
-              x={PAR_START}
-              stroke="#666666"
-              strokeDasharray="4 4"
-              label={{ value: "PAR", position: "top", fill: "#888888", fontSize: 9 }}
-            />
-            <ReferenceLine
-              x={PAR_END}
-              stroke="#666666"
-              strokeDasharray="4 4"
-              label={{ value: "Fin PAR", position: "top", fill: "#888888", fontSize: 9 }}
-            />
-
-            {dataKeys.map((key, index) => (
-              <Line
-                key={key}
-                type="monotone"
-                dataKey={key}
-                name={key}
-                stroke={COLOR_TABLE[index % COLOR_TABLE.length]}
-                strokeWidth={1.5}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
-                isAnimationActive={!isLoading}
-                animationDuration={300}
+              <XAxis
+                dataKey="wavelength"
+                type="number"
+                domain={['dataMin', 'dataMax']}
+                allowDataOverflow={true}
+                tickCount={15}
+                tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
+                axisLine={{ stroke: "#333333" }}
+                label={{
+                  value: "Longitud de onda (nm)",
+                  position: "insideBottom",
+                  offset: -10,
+                  style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
+                }}
               />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
 
-        {isLoading && <LoadingOverlay />}
+              <YAxis
+                domain={[0, dynamicYMax]}
+                allowDataOverflow={true}
+                tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
+                axisLine={{ stroke: "#333333" }}
+                tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}
+                label={{
+                  value: "Irradiancia (W/m²/µm)",
+                  angle: -90,
+                  position: "insideLeft",
+                  offset: 0,
+                  style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
+                }}
+              />
+
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#444', strokeWidth: 1, strokeDasharray: '4 4' }} />
+
+              <ReferenceLine
+                x={PAR_START}
+                stroke="#666666"
+                strokeDasharray="4 4"
+                label={{ value: "PAR", position: "top", fill: "#888888", fontSize: 9 }}
+              />
+              <ReferenceLine
+                x={PAR_END}
+                stroke="#666666"
+                strokeDasharray="4 4"
+                label={{ value: "Fin PAR", position: "top", fill: "#888888", fontSize: 9 }}
+              />
+
+              {dataKeys.map((key, index) => (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  name={key}
+                  stroke={COLOR_TABLE[index % COLOR_TABLE.length]}
+                  strokeWidth={1.5}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                  isAnimationActive={!isLoading}
+                  animationDuration={300}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+
+          {isLoading && <LoadingOverlay />}
+        </div>
+
+        <div style={{ ...styles.legend, overflowY: dataKeys.length > 20 ? "auto" : "visible", maxHeight: 80 }}>
+          {dataKeys.map((key, index) => (
+            <LegendItem key={key} color={COLOR_TABLE[index % COLOR_TABLE.length]} label={`#${key}`} />
+          ))}
+        </div>
       </div>
 
-      <div style={styles.legend}>
-        {dataKeys.map((key, index) => (
-          <LegendItem key={key} color={COLOR_TABLE[index % COLOR_TABLE.length]} label={`#${key}`} />
-        ))}
-      </div>
-    </div>
+      <ExpandedGraphModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        data={chartData}
+        lines={dataKeys.map((key, index) => ({
+          key: key,
+          name: `#${key}`,
+          color: COLOR_TABLE[index % COLOR_TABLE.length]
+        }))}
+        title="Superposición Histórica"
+      />
+    </>
   );
 };
 
@@ -217,9 +249,9 @@ const LegendItem: React.FC<{ color: string; label: string }> = ({ color, label }
 const styles: Record<string, React.CSSProperties> = {
   container: {
     position: "relative",
-    backgroundColor: "#161616",
-    borderRadius: 6,
-    border: "1px solid #2a2a2a",
+    backgroundColor: "#1e1e1e",
+    borderRadius: 4,
+    border: "1px solid #333333",
     padding: "16px 16px 8px",
     fontFamily: "'Inter', system-ui, sans-serif",
   },
@@ -228,23 +260,32 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "baseline",
     marginBottom: 8,
-    paddingLeft: 4,
+    paddingBottom: 16,
+    borderBottom: "1px solid #333333",
   },
   title: {
-    color: "#888888",
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
     margin: 0,
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: 600,
   },
-  meta: {
-    color: "#666666",
-    fontSize: 10,
-    fontFamily: "'JetBrains Mono', monospace",
+  actions: {
+    display: "flex",
+    gap: 8,
+  },
+  actionBtn: {
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: 4,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 4,
   },
   chartWrapper: {
     position: "relative",
+    width: "100%",
   },
   loadingOverlay: {
     position: "absolute",
@@ -252,8 +293,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(22, 22, 22, 0.7)",
-    backdropFilter: "blur(2px)",
+    backgroundColor: "rgba(30, 30, 30, 0.8)",
     zIndex: 10,
   },
   spinnerContainer: {
@@ -263,11 +303,10 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
   },
   loadingText: {
-    color: "#888888",
+    color: "#cccccc",
     fontSize: 12,
     fontWeight: 500,
     textTransform: "uppercase",
-    letterSpacing: "0.05em",
     margin: 0,
   },
   emptyState: {
@@ -275,18 +314,17 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#161616",
-    borderRadius: 6,
-    border: "1px solid #2a2a2a",
+    backgroundColor: "#1e1e1e",
+    borderRadius: 4,
+    border: "1px solid #333333",
     gap: 8,
   },
   emptyTitle: {
-    color: "#666666",
+    color: "#888888",
     fontSize: 12,
     fontWeight: 500,
     margin: 0,
     textTransform: "uppercase",
-    letterSpacing: "0.05em",
   },
   tooltip: {
     backgroundColor: "#111111",
@@ -295,9 +333,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "8px 12px",
   },
   tooltipTitle: {
-    color: "#888888",
+    color: "#cccccc",
     fontSize: 11,
-    fontWeight: 500,
+    fontWeight: 600,
     margin: "0 0 4px",
     display: "flex",
     alignItems: "center",
@@ -305,14 +343,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   tooltipRegion: {
     fontSize: 9,
-    color: "#888",
-    backgroundColor: "#222",
+    color: "#ffffff",
+    backgroundColor: "#333333",
     padding: "2px 4px",
     borderRadius: 2,
   },
   tooltipValue: {
     fontSize: 12,
-    margin: 0,
+    margin: "2px 0",
     fontFamily: "'JetBrains Mono', monospace",
   },
   legend: {
@@ -320,7 +358,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     flexWrap: "wrap",
     gap: 16,
-    paddingTop: 4,
+    paddingTop: 8,
   },
   legendItem: {
     display: "flex",
@@ -333,7 +371,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "50%",
   },
   legendLabel: {
-    color: "#e0e0e0",
+    color: "#888888",
     fontSize: 11,
     fontFamily: "'JetBrains Mono', monospace",
   },

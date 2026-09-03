@@ -17,14 +17,22 @@ class FakeSpectroradiometerAdapter(SpectroradiometerPort):
         return True
 
     async def configure_sensor(self, config: SpectrometerConfig) -> bool:
-        # Extrae el exposure_time_ms (cuyo rango válido es de 10 a 5000 milisegundos)
-        if config.exposure_time_ms < 10 or config.exposure_time_ms > 5000:
-            raise ValueError("El tiempo de exposición debe estar entre 10 y 5000 milisegundos.")
-        
-        self.exposure_time_ms = config.exposure_time_ms
-        
-        # Emular el tiempo físico real en el que el obturador permanece abierto
-        await asyncio.sleep(self.exposure_time_ms / 1000.0)
+        if getattr(config, 'auto_exposure', False):
+            # Simular cálculo dinámico (un barrido de 10ms + tiempo óptimo)
+            import random
+            ideal_exposure = random.randint(15, 300)
+            self.exposure_time_ms = ideal_exposure
+            # Emular el tiempo físico real del cálculo + toma
+            await asyncio.sleep((10 + self.exposure_time_ms) / 1000.0)
+        else:
+            # Extrae el exposure_time_ms (cuyo rango válido es de 10 a 5000 milisegundos)
+            if config.exposure_time_ms < 10 or config.exposure_time_ms > 5000:
+                raise ValueError("El tiempo de exposición debe estar entre 10 y 5000 milisegundos.")
+            
+            self.exposure_time_ms = config.exposure_time_ms
+            
+            # Emular el tiempo físico real en el que el obturador permanece abierto
+            await asyncio.sleep(self.exposure_time_ms / 1000.0)
         return True
 
     async def read_spectrum(self, sensor_id: str) -> SpectralData:

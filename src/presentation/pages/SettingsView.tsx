@@ -3,43 +3,6 @@ import { apiClient } from "../../infrastructure/api/api_client";
 import { Settings, Play, Square, Clock, Usb } from "lucide-react";
 
 export const SettingsView: React.FC = () => {
-  const [status, setStatus] = useState<{is_running: boolean, interval_minutes: number}>({ is_running: false, interval_minutes: 10 });
-  const [intervalInput, setIntervalInput] = useState(10);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const res = await apiClient.getSchedulerStatus();
-        setStatus(res);
-        setIntervalInput(res.interval_minutes);
-      } catch (err) {
-        console.error("Error fetching scheduler status", err);
-      }
-    };
-    fetchStatus();
-    const timer = setInterval(fetchStatus, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleToggleScheduler = async () => {
-    setIsProcessing(true);
-    try {
-      if (status.is_running) {
-        await apiClient.stopScheduler();
-      } else {
-        await apiClient.startScheduler(intervalInput);
-      }
-      const res = await apiClient.getSchedulerStatus();
-      setStatus(res);
-    } catch (err) {
-      console.error("Error toggling scheduler", err);
-      alert("Error al intentar cambiar el estado del programador automático.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -88,50 +51,7 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Panel de Scheduler */}
-        <div style={styles.card}>
-          <div style={styles.cardHeader}>
-            <div style={styles.cardTitleBox}>
-              <Clock size={18} color="#888" />
-              <h3 style={styles.cardTitle}>Programador Automático (Scheduler)</h3>
-            </div>
-            {status.is_running ? (
-              <span style={styles.badgeActive}>EJECUTANDO</span>
-            ) : (
-              <span style={styles.badgeIdle}>DETENIDO</span>
-            )}
-          </div>
-          <div style={styles.cardBody}>
-            <p style={styles.description}>
-              Configura el sistema para que realice mediciones y guarde los espectros automáticamente en segundo plano a intervalos regulares.
-            </p>
-            
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Intervalo de Medición (minutos)</label>
-              <input 
-                type="number" 
-                min="1" 
-                max="1440"
-                value={intervalInput} 
-                onChange={(e) => setIntervalInput(Number(e.target.value))}
-                style={styles.input}
-                disabled={status.is_running || isProcessing}
-              />
-            </div>
 
-            <button 
-              style={status.is_running ? styles.buttonStop : styles.buttonStart}
-              onClick={handleToggleScheduler}
-              disabled={isProcessing}
-            >
-              {status.is_running ? (
-                <><Square size={16} fill="currentColor" /> Detener Programador</>
-              ) : (
-                <><Play size={16} fill="currentColor" /> Iniciar Mediciones Automáticas</>
-              )}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

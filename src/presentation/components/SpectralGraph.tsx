@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -10,7 +10,8 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { SpectralData } from "../../infrastructure/api";
-import { Loader2, Activity } from "lucide-react";
+import { Loader2, Activity, Maximize2 } from "lucide-react";
+import { ExpandedGraphModal } from "./ExpandedGraphModal";
 
 // ─────────────────────────────────────────────────────────────────────
 // Props
@@ -109,108 +110,139 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
     return points;
   }, [data]);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Filtramos datos para escala dinámica Y
+  const dynamicYMax = useMemo(() => {
+    if (chartData.length === 0) return 10;
+    let max = 0;
+    chartData.forEach((d) => {
+      if (d.irradiance > max) max = d.irradiance;
+    });
+    return max * 1.05; // Añade un 5% de margen superior visual
+  }, [chartData]);
+
   if (!data && !isLoading) {
     return <EmptyState height={height} />;
   }
 
   return (
-    <div style={{ ...styles.container, height }}>
-      <div style={styles.header}>
-        <h3 style={styles.title}>Distribución de Energía Espectral</h3>
-        {data && (
-          <span style={styles.meta}>
-            Δλ = 1 nm
-          </span>
-        )}
+    <>
+      <div style={{ ...styles.container, height }}>
+        <div style={styles.header}>
+          <h3 style={styles.title}>Distribución de Energía Espectral</h3>
+          <div style={styles.actions}>
+            <button 
+              style={styles.actionBtn} 
+              onClick={() => setIsModalOpen(true)}
+              title="Expandir gráfico"
+            >
+              <Maximize2 size={16} color="#888888" />
+            </button>
+          </div>
+        </div>
+
+        <div style={styles.chartWrapper}>
+          <ResponsiveContainer width="100%" height={height - 110}>
+            <AreaChart
+              data={chartData}
+              margin={{ top: 25, right: 30, left: 20, bottom: 35 }}
+            >
+              <defs>
+                <linearGradient id="spectralGradient" x1="0" y1="0" x2="1" y2="0">
+                  {GRADIENT_STOPS.map((stop) => (
+                    <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} stopOpacity={0.9} />
+                  ))}
+                </linearGradient>
+                <linearGradient id="spectralFill" x1="0" y1="0" x2="1" y2="0">
+                  {GRADIENT_STOPS.map((stop) => (
+                    <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} stopOpacity={0.1} />
+                  ))}
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
+
+              <XAxis
+                dataKey="wavelength"
+                type="number"
+                domain={['dataMin', 'dataMax']}
+                allowDataOverflow={true}
+                tickCount={15}
+                tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
+                axisLine={{ stroke: "#333333" }}
+                label={{
+                  value: "Longitud de onda (nm)",
+                  position: "insideBottom",
+                  offset: -10,
+                  style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
+                }}
+              />
+
+              <YAxis
+                domain={[0, dynamicYMax]}
+                allowDataOverflow={true}
+                tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
+                axisLine={{ stroke: "#333333" }}
+                tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}
+                label={{
+                  value: "Irradiancia (W/m²/µm)",
+                  angle: -90,
+                  position: "insideLeft",
+                  offset: 0,
+                  style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
+                }}
+              />
+
+              <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#444', strokeWidth: 1, strokeDasharray: '4 4' }} />
+
+              <ReferenceLine
+                x={PAR_START}
+                stroke="#666666"
+                strokeDasharray="4 4"
+                label={{ value: "PAR", position: "top", fill: "#888888", fontSize: 9 }}
+              />
+              <ReferenceLine
+                x={PAR_END}
+                stroke="#666666"
+                strokeDasharray="4 4"
+                label={{ value: "Fin PAR", position: "top", fill: "#888888", fontSize: 9 }}
+              />
+              
+              <Area
+                type="monotone"
+                dataKey="irradiance"
+                stroke="url(#spectralGradient)"
+                fill="url(#spectralFill)"
+                strokeWidth={1.5}
+                dot={false}
+                activeDot={{ r: 4, fill: "#e0e0e0", stroke: "#111111", strokeWidth: 2 }}
+                isAnimationActive={!isLoading}
+                animationDuration={500}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+
+          {isLoading && <LoadingOverlay />}
+        </div>
+
+        <div style={styles.legend}>
+          <LegendItem color="#7c3aed" label="UV" />
+          <LegendItem color="#10b981" label="VIS / PAR" />
+          <LegendItem color="#991b1b" label="NIR" />
+        </div>
       </div>
 
-      <div style={styles.chartWrapper}>
-        <ResponsiveContainer width="100%" height={height - 60}>
-          <AreaChart
-            data={chartData}
-            margin={{ top: 25, right: 30, left: 20, bottom: 20 }}
-          >
-            <defs>
-              <linearGradient id="spectralGradient" x1="0" y1="0" x2="1" y2="0">
-                {GRADIENT_STOPS.map((stop) => (
-                  <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} stopOpacity={0.9} />
-                ))}
-              </linearGradient>
-              <linearGradient id="spectralFill" x1="0" y1="0" x2="1" y2="0">
-                {GRADIENT_STOPS.map((stop) => (
-                  <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} stopOpacity={0.1} />
-                ))}
-              </linearGradient>
-            </defs>
-
-            <CartesianGrid strokeDasharray="3 3" stroke="#222222" />
-
-            <XAxis
-              dataKey="wavelength"
-              type="number"
-              domain={[300, 1700]}
-              tickCount={15}
-              tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
-              axisLine={{ stroke: "#333333" }}
-              label={{
-                value: "Longitud de onda (nm)",
-                position: "insideBottom",
-                offset: -10,
-                style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
-              }}
-            />
-
-            <YAxis
-              tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
-              axisLine={{ stroke: "#333333" }}
-              tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}
-              label={{
-                value: "Irradiancia (W/m²/µm)",
-                angle: -90,
-                position: "insideLeft",
-                offset: 0,
-                style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
-              }}
-            />
-
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#444', strokeWidth: 1, strokeDasharray: '4 4' }} />
-
-            <ReferenceLine
-              x={PAR_START}
-              stroke="#666666"
-              strokeDasharray="4 4"
-              label={{ value: "PAR", position: "top", fill: "#888888", fontSize: 9 }}
-            />
-            <ReferenceLine
-              x={PAR_END}
-              stroke="#666666"
-              strokeDasharray="4 4"
-              label={{ value: "Fin PAR", position: "top", fill: "#888888", fontSize: 9 }}
-            />
-
-            <Area
-              type="monotone"
-              dataKey="irradiance"
-              stroke="url(#spectralGradient)"
-              fill="url(#spectralFill)"
-              strokeWidth={1.5}
-              dot={false}
-              activeDot={{ r: 4, fill: "#e0e0e0", stroke: "#111111", strokeWidth: 2 }}
-              isAnimationActive={!isLoading}
-              animationDuration={500}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-
-        {isLoading && <LoadingOverlay />}
-      </div>
-
-      <div style={styles.legend}>
-        <LegendItem color="#7c3aed" label="UV" />
-        <LegendItem color="#10b981" label="VIS / PAR" />
-        <LegendItem color="#991b1b" label="NIR" />
-      </div>
-    </div>
+      <ExpandedGraphModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        data={chartData}
+        lines={[
+          { key: "irradiance", color: "#0078d4", name: "Irradiancia (MS-711/712)" }
+        ]}
+        title="Distribución Espectral de Irradiancia"
+      />
+    </>
   );
 };
 
@@ -233,16 +265,30 @@ const styles: Record<string, React.CSSProperties> = {
   header: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "baseline",
-    marginBottom: 12,
-    paddingLeft: 4,
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottom: "1px solid #333333",
   },
   title: {
-    color: "#cccccc",
-    fontSize: 12,
-    fontWeight: 600,
-    textTransform: "uppercase" as const,
     margin: 0,
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  actions: {
+    display: "flex",
+    gap: 8,
+  },
+  actionBtn: {
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: 4,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 4,
   },
   meta: {
     color: "#888888",
@@ -251,6 +297,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   chartWrapper: {
     position: "relative",
+    width: "100%",
   },
   loadingOverlay: {
     position: "absolute",
@@ -344,6 +391,12 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: "uppercase",
     fontWeight: 500,
   },
+  zoomHint: {
+    color: "#555555",
+    fontSize: 10,
+    fontStyle: "italic",
+    marginLeft: 16,
+  }
 };
 
 export default SpectralGraph;

@@ -25,6 +25,9 @@ class AnalysisRequest(BaseModel):
     exposure_time_ms: int = Field(
         default=10, ge=10, le=5000, description="Tiempo de exposición para la lectura (10-5000ms)."
     )
+    auto_exposure: bool = Field(
+        default=False, description="Simular cálculo de exposición automática."
+    )
 
 class AnalysisResult(BaseModel):
     """Resultado del análisis espectral combinado MS-711 + MS-712."""
@@ -42,4 +45,7 @@ class AnalysisResult(BaseModel):
     )
     total_irradiance: float = Field(
         ..., description="Irradiancia total integrada sobre el rango completo (W/m²)"
+    )
+    applied_exposure_ms: Optional[int] = Field(
+        None, description="El tiempo de exposición real usado en ms"
     )

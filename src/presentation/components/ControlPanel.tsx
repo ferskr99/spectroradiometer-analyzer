@@ -47,6 +47,10 @@ export interface ControlPanelProps {
   isPending: boolean;
   isSuccess?: boolean;
   errorMessage?: string | null;
+  sensorTarget: "MS-711" | "MS-712" | "Merge";
+  onSensorTargetChange: (sensor: "MS-711" | "MS-712" | "Merge") => void;
+  exposureTime: number;
+  onExposureTimeChange: (time: number) => void;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -54,29 +58,36 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   isPending,
   isSuccess,
   errorMessage,
+  sensorTarget,
+  onSensorTargetChange,
+  exposureTime,
+  onExposureTimeChange,
 }) => {
-  const [selectedSensor, setSelectedSensor] = useState<SensorMode>("Merge");
-  const [exposureMs, setExposureMs] = useState(EXPOSURE_DEFAULT);
 
   const handleExposureInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = parseInt(e.target.value, 10);
       if (isNaN(raw)) return;
-      setExposureMs(Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, raw)));
+      onExposureTimeChange(Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, raw)));
     },
-    [],
+    [onExposureTimeChange],
   );
 
   const handleSliderChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setExposureMs(parseInt(e.target.value, 10));
+      const raw = parseInt(e.target.value, 10);
+      if (isNaN(raw)) return;
+      onExposureTimeChange(Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, raw)));
     },
-    [],
+    [onExposureTimeChange],
   );
 
-  const handleMeasure = useCallback(() => {
-    onAnalyze({ sensor_target: selectedSensor, exposure_time_ms: exposureMs });
-  }, [onAnalyze, selectedSensor, exposureMs]);
+  const handleAnalyze = useCallback(() => {
+    onAnalyze({
+      sensor_target: sensorTarget,
+      exposure_time_ms: exposureTime,
+    });
+  }, [sensorTarget, exposureTime, onAnalyze]);
 
   return (
     <div style={styles.container}>
@@ -101,16 +112,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             {SENSOR_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
-                onClick={() => setSelectedSensor(opt.id)}
+                onClick={() => onSensorTargetChange(opt.id)}
                 disabled={isPending}
                 style={{
                   ...styles.sensorButton,
-                  ...(selectedSensor === opt.id ? styles.sensorButtonActive : {}),
+                  ...(sensorTarget === opt.id ? styles.sensorButtonActive : {}),
                   ...(isPending ? styles.disabled : {}),
                 }}
               >
                 <div style={styles.sensorIcon}>{opt.icon}</div>
-                <span style={{...styles.sensorLabel, color: selectedSensor === opt.id ? "#e0e0e0" : "#888"}}>{opt.label}</span>
+                <span style={{...styles.sensorLabel, color: sensorTarget === opt.id ? "#e0e0e0" : "#888"}}>{opt.label}</span>
                 <span style={styles.sensorDesc}>{opt.description}</span>
               </button>
             ))}
@@ -124,7 +135,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <div style={styles.exposureInputWrapper}>
               <input
                 type="number"
-                value={exposureMs}
+                value={exposureTime}
                 onChange={handleExposureInput}
                 min={EXPOSURE_MIN}
                 max={EXPOSURE_MAX}
@@ -143,21 +154,28 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             min={EXPOSURE_MIN}
             max={EXPOSURE_MAX}
             step={10}
-            value={exposureMs}
-            onChange={handleSliderChange}
+            value={exposureTime}
+            onChange={(e) => onExposureTimeChange(Number(e.target.value))}
             disabled={isPending}
-            style={styles.slider}
+            style={{
+              ...styles.slider,
+              background: `linear-gradient(to right, #0078d4 ${
+                ((exposureTime - EXPOSURE_MIN) / (EXPOSURE_MAX - EXPOSURE_MIN)) * 100
+              }%, #333333 ${
+                ((exposureTime - EXPOSURE_MIN) / (EXPOSURE_MAX - EXPOSURE_MIN)) * 100
+              }%)`,
+            }}
           />
 
           <div style={styles.presets}>
             {EXPOSURE_PRESETS.map((preset) => (
               <button
                 key={preset}
-                onClick={() => setExposureMs(preset)}
+                onClick={() => onExposureTimeChange(preset)}
                 disabled={isPending}
                 style={{
                   ...styles.presetButton,
-                  ...(exposureMs === preset ? styles.presetButtonActive : {}),
+                  ...(exposureTime === preset ? styles.presetButtonActive : {}),
                   ...(isPending ? styles.disabled : {}),
                 }}
               >
@@ -170,7 +188,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         {/* Columna 3: Acción */}
         <div style={styles.actionSection}>
           <button
-            onClick={handleMeasure}
+            onClick={handleAnalyze}
             disabled={isPending}
             style={{
               ...styles.measureButton,
@@ -197,10 +215,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           ) : (
             <div style={styles.infoBar}>
               <span style={styles.infoText}>
-                Modo: {selectedSensor === "Merge" ? "Sincronizado (MS-711 + MS-712)" : `Individual (${selectedSensor})`}
+                Modo: {sensorTarget === "Merge" ? "Sincronizado (MS-711 + MS-712)" : `Individual (${sensorTarget})`}
               </span>
               <span style={styles.infoText}>
-                Timeout HW: ~{Math.ceil(exposureMs / 1000)}–{Math.ceil((exposureMs * 1.5) / 1000)}s
+                Timeout HW: ~{Math.ceil(exposureTime / 1000)}–{Math.ceil((exposureTime * 1.5) / 1000)}s
               </span>
             </div>
           )}
@@ -223,6 +241,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 24,
+    flex: 2,
   },
   header: {
     display: "flex",

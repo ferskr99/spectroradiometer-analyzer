@@ -2,8 +2,11 @@ import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { Activity, LayoutDashboard, History, Settings, Layers, Cpu, Award, FileText } from 'lucide-react';
 import { SplashScreen } from './SplashScreen';
+import { useAppWebSocket } from '../../application/hooks/useWebSocket';
 
 export const Layout: React.FC = () => {
+  // Mantener la conexión WS global mientras la app esté abierta
+  useAppWebSocket();
   return (
     <div style={styles.page}>
       <SplashScreen />

@@ -13,9 +13,29 @@ import type { components } from "./api-types";
 
 export type SensorId = "MS-711" | "MS-712";
 export type SpectralData = components["schemas"]["SpectralData"];
-export type AnalysisRequest = components["schemas"]["AnalysisRequest"];
 export type AnalysisResult = components["schemas"]["AnalysisResult"];
 export type HTTPValidationError = components["schemas"]["HTTPValidationError"];
+
+export interface AnalysisRequest {
+  sensor_target: "MS-711" | "MS-712" | "Merge" | string;
+  exposure_time_ms: number;
+  auto_exposure?: boolean;
+}
+
+export interface SchedulerConfig {
+  start_time: string; // ISO format
+  end_time: string;   // ISO format
+  interval_minutes: number;
+  sensor_target: string;
+  exposure_time_ms: number;
+  auto_exposure?: boolean;
+}
+
+export interface SchedulerStatusResponse {
+  is_running: boolean;
+  config: SchedulerConfig | null;
+  last_exposure_ms?: number | null;
+}
 
 export interface MeasurementRecord {
   id: number;
@@ -247,35 +267,6 @@ export class SpectroradiometerApiClient {
     );
   }
 
-  /**
-   * GET /api/v1/sensors/scheduler/status
-   */
-  async getSchedulerStatus(): Promise<{is_running: boolean, interval_minutes: number}> {
-    return this.request<{is_running: boolean, interval_minutes: number}>(
-      `/api/v1/sensors/scheduler/status`,
-      { method: "GET" }
-    );
-  }
-
-  /**
-   * POST /api/v1/sensors/scheduler/start
-   */
-  async startScheduler(intervalMinutes: number): Promise<any> {
-    return this.request<any>(
-      `/api/v1/sensors/scheduler/start?interval_minutes=${intervalMinutes}`,
-      { method: "POST" }
-    );
-  }
-
-  /**
-   * POST /api/v1/sensors/scheduler/stop
-   */
-  async stopScheduler(): Promise<any> {
-    return this.request<any>(
-      `/api/v1/sensors/scheduler/stop`,
-      { method: "POST" }
-    );
-  }
 
   /**
    * GET /api/v1/sensors/history/export/csv
@@ -310,7 +301,42 @@ export class SpectroradiometerApiClient {
     );
   }
 
-  // ─── Reportes ─────────────────────────────────────────────────────
+  // ─── Scheduler Avanzado ──────────────────────────────────────────
+
+  /**
+   * GET /api/v1/sensors/scheduler/status
+   */
+  async getSchedulerStatus(): Promise<SchedulerStatusResponse> {
+    return this.request<SchedulerStatusResponse>(
+      `/api/v1/sensors/scheduler/status`,
+      { method: "GET" }
+    );
+  }
+
+  /**
+   * POST /api/v1/sensors/scheduler/start
+   */
+  async startScheduler(config: SchedulerConfig): Promise<any> {
+    return this.request<any>(
+      `/api/v1/sensors/scheduler/start`,
+      { 
+        method: "POST",
+        body: JSON.stringify(config),
+      }
+    );
+  }
+
+  /**
+   * POST /api/v1/sensors/scheduler/stop
+   */
+  async stopScheduler(): Promise<any> {
+    return this.request<any>(
+      `/api/v1/sensors/scheduler/stop`,
+      { method: "POST" }
+    );
+  }
+
+  // ─── Exportación de Datos ─────────────────────────────────────────────────────
 
   /**
    * POST /api/v1/sensors/reports/generate

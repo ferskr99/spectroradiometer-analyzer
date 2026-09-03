@@ -21,10 +21,10 @@ export const ReportsView: React.FC = () => {
   const [reportNotes, setReportNotes] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Reutilizamos el endpoint del historial para obtener la lista
+  // Utilizamos el método público del cliente de API
   const { data: records = [], isLoading } = useQuery<HistoryRecord[]>({
     queryKey: ['history', 'list'],
-    queryFn: () => apiClient.request<HistoryRecord[]>('/api/v1/sensors/history/list'),
+    queryFn: () => apiClient.getHistory(100) as unknown as Promise<HistoryRecord[]>,
   });
 
   const toggleSelection = (id: number) => {

@@ -13,8 +13,7 @@ export const ComparisonView: React.FC = () => {
   const handleToggleSelection = (id: number, selected: boolean) => {
     setSelectedIds((prev) => {
       if (selected) {
-        // Limitar a 10 selecciones para no saturar el gráfico
-        if (prev.length >= 10) return prev;
+        // Remover el límite artificial de 10 para superar al software oficial
         return [...prev, id];
       } else {
         return prev.filter((item) => item !== id);
@@ -104,6 +103,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     height: "calc(100vh - 48px)", 
     overflow: "hidden", 
+    backgroundColor: "#111111",
   },
   layout: {
     display: "flex",
@@ -139,18 +139,17 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#161616",
-    border: "1px solid #2a2a2a",
-    borderRadius: 6,
+    backgroundColor: "#1e1e1e",
+    border: "1px solid #333333",
+    borderRadius: 4,
     padding: "16px 20px",
   },
   detailTitle: {
-    color: "#e0e0e0",
+    color: "#ffffff",
     fontSize: 14,
     fontWeight: 600,
     margin: 0,
     textTransform: "uppercase",
-    letterSpacing: "0.05em",
   },
   closeButton: {
     background: "transparent",
@@ -162,7 +161,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "color 0.2s",
+    transition: "color 0.1s ease",
   },
   graphContainer: {
     display: "flex",

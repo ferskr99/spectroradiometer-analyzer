@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
@@ -11,27 +11,40 @@ from src.application.dependencies import get_hardware_adapter
 from src.application.spectral_processing import SpectralProcessorUseCase
 from src.infrastructure.db.database import get_db
 from src.infrastructure.db.models import MeasurementRecord
-from src.application.scheduler_service import SchedulerService
+from src.infrastructure.db.models import MeasurementRecord
+from src.application.advanced_scheduler import AdvancedScheduler, SchedulerConfig
+from src.application.websocket_manager import ws_manager
 
 router = APIRouter(prefix="/api/v1/sensors", tags=["Hardware"])
 
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Mantener la conexión viva
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+
 @router.get("/scheduler/status", tags=["Scheduler"])
 def get_scheduler_status():
-    return SchedulerService.status()
+    return AdvancedScheduler.status()
 
 @router.post("/scheduler/start", tags=["Scheduler"])
-def start_scheduler(interval_minutes: int = 10):
-    success = SchedulerService.start(interval_minutes)
+async def start_scheduler(config: SchedulerConfig):
+    success = AdvancedScheduler.start(config)
     if not success:
         raise HTTPException(status_code=400, detail="El Scheduler ya está corriendo.")
-    return {"message": "Scheduler iniciado", "interval_minutes": interval_minutes}
+    return {"message": "Scheduler avanzado iniciado", "config": config.model_dump()}
 
 @router.post("/scheduler/stop", tags=["Scheduler"])
-def stop_scheduler():
-    success = SchedulerService.stop()
+async def stop_scheduler():
+    success = AdvancedScheduler.stop()
     if not success:
         raise HTTPException(status_code=400, detail="El Scheduler no está corriendo.")
     return {"message": "Scheduler detenido"}
+
 
 @router.get("/{sensor_id}/spectrum", response_model=SpectralData)
 async def get_spectrum(
@@ -105,7 +118,8 @@ async def analyze_spectra(
         par=par,
         ppfd=ppfd,
         illuminance=illuminance,
-        total_irradiance=total_irradiance
+        total_irradiance=total_irradiance,
+        applied_exposure_ms=getattr(adapter, "exposure_time_ms", request.exposure_time_ms)
     )
 
     # 4. Guardar en Base de Datos (Datalogger)
@@ -122,6 +136,16 @@ async def analyze_spectra(
     db.add(record)
     db.commit()
     db.refresh(record)
+
+    # Emitir evento WebSocket para notificar a los clientes
+    import asyncio
+    asyncio.create_task(ws_manager.broadcast({
+        "event": "NEW_MEASUREMENT",
+        "data": {
+            "id": record.id,
+            "timestamp": record.timestamp.isoformat()
+        }
+    }))
 
     return result
 
