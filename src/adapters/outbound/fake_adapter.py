@@ -39,8 +39,8 @@ class FakeSpectroradiometerAdapter(SpectroradiometerPort):
         # Límites Físicos de Longitud de Onda
         if sensor_id == "MS-711":
             wavelengths = np.arange(300.0, 1100.0, 0.5) 
-        elif sensor_id == "MS-712":
-            wavelengths = np.arange(900.0, 1700.0, 1.5)
+        elif sensor_id == "MS-713":
+            wavelengths = np.arange(900.0, 2500.0, 2.0)
         else:
             raise ValueError("Identificador de sensor desconocido.")
 

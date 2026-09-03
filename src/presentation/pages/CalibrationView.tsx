@@ -28,7 +28,7 @@ interface CalibrationHistory {
 
 interface CalibrationData {
   ms711: SensorCalibration;
-  ms712: SensorCalibration;
+  ms713: SensorCalibration;
   calibration_history: CalibrationHistory[];
 }
 
@@ -192,7 +192,7 @@ export const CalibrationView: React.FC = () => {
       {/* Sensor Cards */}
       <div style={styles.cardsGrid}>
         {renderSensorCard('ms711', data.ms711)}
-        {renderSensorCard('ms712', data.ms712)}
+        {renderSensorCard('ms713', data.ms713)}
       </div>
 
       {/* Calibration History */}

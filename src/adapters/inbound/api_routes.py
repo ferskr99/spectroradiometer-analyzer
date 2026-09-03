@@ -51,7 +51,7 @@ async def get_spectrum(
     sensor_id: str, 
     adapter: SpectroradiometerPort = Depends(get_hardware_adapter)
 ):
-    if sensor_id not in ["MS-711", "MS-712"]:
+    if sensor_id not in ["MS-711", "MS-713"]:
         raise HTTPException(status_code=422, detail="Modelo de sensor no soportado.")
     
     return await adapter.read_spectrum(sensor_id)
@@ -73,7 +73,7 @@ async def get_health_diagnostics(
             "supply_voltage_v": round(12.0 + random.uniform(-0.1, 0.1), 2),
             "connection": "Stable"
         },
-        "ms712": {
+        "ms713": {
             "peltier_temp_c": round(-5.0 + random.uniform(-0.2, 0.2), 2), # El manual dice que debe mantenerse en -5C
             "supply_voltage_v": round(5.0 + random.uniform(-0.05, 0.05), 2),
             "connection": "Stable"
@@ -92,20 +92,20 @@ async def analyze_spectra(
     # 1. Configurar ambos equipos
     if request.sensor_target in ["MS-711", "Merge"]:
         await adapter.configure_sensor(SpectrometerConfig(sensor_id="MS-711", exposure_time_ms=request.exposure_time_ms))
-    if request.sensor_target in ["MS-712", "Merge"]:
-        await adapter.configure_sensor(SpectrometerConfig(sensor_id="MS-712", exposure_time_ms=request.exposure_time_ms))
+    if request.sensor_target in ["MS-713", "Merge"]:
+        await adapter.configure_sensor(SpectrometerConfig(sensor_id="MS-713", exposure_time_ms=request.exposure_time_ms))
 
     # 2. Adquirir y procesar datos crudos
     if request.sensor_target == "MS-711":
         data = await adapter.read_spectrum("MS-711")
         interpolated = data
-    elif request.sensor_target == "MS-712":
-        data = await adapter.read_spectrum("MS-712")
+    elif request.sensor_target == "MS-713":
+        data = await adapter.read_spectrum("MS-713")
         interpolated = data
     else:
         ms711_data = await adapter.read_spectrum("MS-711")
-        ms712_data = await adapter.read_spectrum("MS-712")
-        interpolated = SpectralProcessorUseCase.merge_and_interpolate(ms711_data, ms712_data)
+        ms713_data = await adapter.read_spectrum("MS-713")
+        interpolated = SpectralProcessorUseCase.merge_and_interpolate(ms711_data, ms713_data)
 
     # 3. Cálculos radiométricos deterministas
     par = SpectralProcessorUseCase.calculate_par(interpolated)
@@ -352,7 +352,7 @@ def get_calibration_status():
                 {"wavelength_nm": 1100, "sensitivity": 0.00108, "offset": -0.0001},
             ]
         },
-        "ms712": {
+        "ms713": {
             **calc_status(last_cal_712),
             "serial_number": "MS712-2024-0018",
             "coefficients": [
@@ -364,14 +364,14 @@ def get_calibration_status():
                 {"wavelength_nm": 1400, "sensitivity": 0.00141, "offset": -0.0001},
                 {"wavelength_nm": 1500, "sensitivity": 0.00118, "offset": 0.0001},
                 {"wavelength_nm": 1600, "sensitivity": 0.00095, "offset": -0.0002},
-                {"wavelength_nm": 1700, "sensitivity": 0.00078, "offset": 0.0001},
+                {"wavelength_nm": 2500, "sensitivity": 0.00078, "offset": 0.0001},
             ]
         },
         "calibration_history": [
-            {"date": "2025-03-20", "sensor": "MS-712", "performed_by": "EKO Instruments", "type": "Fábrica"},
+            {"date": "2025-03-20", "sensor": "MS-713", "performed_by": "EKO Instruments", "type": "Fábrica"},
             {"date": "2025-02-15", "sensor": "MS-711", "performed_by": "EKO Instruments", "type": "Fábrica"},
             {"date": "2023-01-10", "sensor": "MS-711", "performed_by": "Lab. Metrología UNMSM", "type": "Recalibración"},
-            {"date": "2023-01-10", "sensor": "MS-712", "performed_by": "Lab. Metrología UNMSM", "type": "Recalibración"},
+            {"date": "2023-01-10", "sensor": "MS-713", "performed_by": "Lab. Metrología UNMSM", "type": "Recalibración"},
         ]
     }
 
@@ -413,7 +413,7 @@ def generate_report(
     pdf.cell(0, 60, "", ln=True)
     pdf.cell(0, 15, title, ln=True, align="C")
     pdf.set_font("Helvetica", "", 14)
-    pdf.cell(0, 10, "Spectroradiometer Analyzer - EKO MS-711 / MS-712", ln=True, align="C")
+    pdf.cell(0, 10, "Spectroradiometer Analyzer - EKO MS-711 / MS-713", ln=True, align="C")
     pdf.cell(0, 20, "", ln=True)
     pdf.set_font("Helvetica", "", 12)
     pdf.cell(0, 8, f"Autor: {author}", ln=True, align="C")
@@ -504,7 +504,7 @@ def generate_report(
     pdf.set_font("Helvetica", "I", 10)
     pdf.cell(0, 60, "", ln=True)
     pdf.cell(0, 8, "Este informe fue generado automáticamente por Spectroradiometer Analyzer v1.0.0", ln=True, align="C")
-    pdf.cell(0, 8, "EKO Instruments - Espectrorradiómetros MS-711 / MS-712", ln=True, align="C")
+    pdf.cell(0, 8, "EKO Instruments - Espectrorradiómetros MS-711 / MS-713", ln=True, align="C")
 
     # Generar bytes
     pdf_bytes = pdf.output()

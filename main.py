@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Spectroradiometer Analyzer API",
-    description="API para análisis de espectros combinados MS-711 y MS-712",
+    description="API para análisis de espectros combinados MS-711 y MS-713",
     version="1.0.0",
     lifespan=lifespan
 )

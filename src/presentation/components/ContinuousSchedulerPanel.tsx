@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { apiClient, SchedulerConfig } from "../../infrastructure/api/api_client";
+import { apiClient, SchedulerConfig, SchedulerStatusResponse } from "../../infrastructure/api/api_client";
 import { Clock, Play, Square, AlertTriangle } from "lucide-react";
 
 export const ContinuousSchedulerPanel: React.FC = () => {
-  const [status, setStatus] = useState<{is_running: boolean, config: SchedulerConfig | null}>({ is_running: false, config: null });
+  const [status, setStatus] = useState<SchedulerStatusResponse>({ is_running: false, config: null, last_exposure_ms: null });
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [interval, setIntervalMins] = useState(10);
@@ -100,7 +100,7 @@ export const ContinuousSchedulerPanel: React.FC = () => {
               disabled={status.is_running}
             >
               <option value="MS-711">MS-711 (UV-VIS-NIR)</option>
-              <option value="MS-712">MS-712 (NIR ext.)</option>
+              <option value="MS-713">MS-713 (NIR ext.)</option>
               <option value="Merge">Fusión (Completo)</option>
             </select>
           </div>

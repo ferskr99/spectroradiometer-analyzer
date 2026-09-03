@@ -55,7 +55,7 @@ export interface components {
              * @description Sensor a leer, o 'Merge' para adquirir y fusionar ambos.
              * @enum {string}
              */
-            sensor_target: "MS-711" | "MS-712" | "Merge";
+            sensor_target: "MS-711" | "MS-713" | "Merge";
             /**
              * Exposure Time Ms
              * @description Tiempo de exposición para la lectura (10-5000ms).
@@ -65,7 +65,7 @@ export interface components {
         };
         /**
          * AnalysisResult
-         * @description Resultado del análisis espectral combinado MS-711 + MS-712.
+         * @description Resultado del análisis espectral combinado MS-711 + MS-713.
          */
         AnalysisResult: {
             /** @description Espectro fusionado e interpolado a 1nm de resolución */

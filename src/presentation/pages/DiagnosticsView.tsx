@@ -7,8 +7,8 @@ interface HealthData {
   time: string;
   ms711_temp: number;
   ms711_volt: number;
-  ms712_temp: number;
-  ms712_volt: number;
+  ms713_temp: number;
+  ms713_volt: number;
 }
 
 interface LogEntry {
@@ -54,15 +54,15 @@ export const DiagnosticsView: React.FC = () => {
             time: timeStr,
             ms711_temp: data.ms711.sensor_temp_c,
             ms711_volt: data.ms711.supply_voltage_v,
-            ms712_temp: data.ms712.peltier_temp_c,
-            ms712_volt: data.ms712.supply_voltage_v,
+            ms713_temp: data.ms713.peltier_temp_c,
+            ms713_volt: data.ms713.supply_voltage_v,
           }];
           // Mantener los últimos 30 puntos (60 segundos a 2s)
           return newHistory.length > 30 ? newHistory.slice(newHistory.length - 30) : newHistory;
         });
 
-        if (data.ms712.peltier_temp_c > -4.5) {
-          addLog(`Advertencia Térmica: Peltier MS-712 superó umbral (${data.ms712.peltier_temp_c.toFixed(1)}°C)`, "warning");
+        if (data.ms713.peltier_temp_c > -4.5) {
+          addLog(`Advertencia Térmica: Peltier MS-713 superó umbral (${data.ms713.peltier_temp_c.toFixed(1)}°C)`, "warning");
         }
 
       } catch (err: any) {
@@ -84,7 +84,7 @@ export const DiagnosticsView: React.FC = () => {
     }
   }, [logs]);
 
-  const globalStatus = !health ? "loading" : error ? "error" : (health.ms712.peltier_temp_c > -4.5 ? "warning" : "ok");
+  const globalStatus = !health ? "loading" : error ? "error" : (health.ms713.peltier_temp_c > -4.5 ? "warning" : "ok");
 
   const renderSparkline = (dataKey: string, color: string, domain: [number | 'auto', number | 'auto']) => (
     <div style={styles.sparklineContainer}>
@@ -168,11 +168,11 @@ export const DiagnosticsView: React.FC = () => {
                 </div>
               </div>
 
-              {/* MS-712 Panel */}
+              {/* MS-713 Panel */}
               <div style={styles.card}>
                 <div style={styles.cardHeader}>
-                  <h3 style={styles.cardTitle}>MS-712 (NIR)</h3>
-                  {health.ms712.connection === "Stable" ? (
+                  <h3 style={styles.cardTitle}>MS-713 (NIR)</h3>
+                  {health.ms713.connection === "Stable" ? (
                     <span style={styles.badgeOk}><CheckCircle2 size={12} /> Conectado</span>
                   ) : (
                     <span style={styles.badgeError}><AlertCircle size={12} /> Error</span>
@@ -184,12 +184,12 @@ export const DiagnosticsView: React.FC = () => {
                     <div style={styles.metricIcon}><Thermometer size={16} color="#3b82f6" /></div>
                     <div style={styles.metricData}>
                       <span style={styles.metricLabel}>Control Peltier (Objetivo: -5°C)</span>
-                      <span style={{...styles.metricValue, color: health.ms712.peltier_temp_c > -4.5 ? '#ef4444' : '#e0e0e0'}}>
-                        {health.ms712.peltier_temp_c.toFixed(1)} °C
+                      <span style={{...styles.metricValue, color: health.ms713.peltier_temp_c > -4.5 ? '#ef4444' : '#e0e0e0'}}>
+                        {health.ms713.peltier_temp_c.toFixed(1)} °C
                       </span>
                     </div>
                   </div>
-                  {renderSparkline("ms712_temp", health.ms712.peltier_temp_c > -4.5 ? "#ef4444" : "#3b82f6", ['auto', 'auto'])}
+                  {renderSparkline("ms713_temp", health.ms713.peltier_temp_c > -4.5 ? "#ef4444" : "#3b82f6", ['auto', 'auto'])}
                 </div>
 
                 <div style={styles.metricBlock}>
@@ -197,10 +197,10 @@ export const DiagnosticsView: React.FC = () => {
                     <div style={styles.metricIcon}><Zap size={16} color="#eab308" /></div>
                     <div style={styles.metricData}>
                       <span style={styles.metricLabel}>Voltaje de Alimentación</span>
-                      <span style={styles.metricValue}>{health.ms712.supply_voltage_v.toFixed(2)} V</span>
+                      <span style={styles.metricValue}>{health.ms713.supply_voltage_v.toFixed(2)} V</span>
                     </div>
                   </div>
-                  {renderSparkline("ms712_volt", "#eab308", ['auto', 'auto'])}
+                  {renderSparkline("ms713_volt", "#eab308", ['auto', 'auto'])}
                 </div>
               </div>
             </div>

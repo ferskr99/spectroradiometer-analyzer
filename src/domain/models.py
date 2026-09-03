@@ -13,13 +13,13 @@ class SpectralData(BaseModel):
         return v
 
 class SpectrometerConfig(BaseModel):
-    sensor_id: str = Field(..., pattern="^(MS-711|MS-712)$")
+    sensor_id: str = Field(..., pattern="^(MS-711|MS-713)$")
     # El tiempo de exposición debe estar entre 10ms y 5000ms.
     exposure_time_ms: int = Field(default=10, ge=10, le=5000)
 
 class AnalysisRequest(BaseModel):
     """Payload para iniciar una configuración y lectura atómica."""
-    sensor_target: Literal["MS-711", "MS-712", "Merge"] = Field(
+    sensor_target: Literal["MS-711", "MS-713", "Merge"] = Field(
         ..., description="Sensor a leer, o 'Merge' para adquirir y fusionar ambos."
     )
     exposure_time_ms: int = Field(
@@ -30,7 +30,7 @@ class AnalysisRequest(BaseModel):
     )
 
 class AnalysisResult(BaseModel):
-    """Resultado del análisis espectral combinado MS-711 + MS-712."""
+    """Resultado del análisis espectral combinado MS-711 + MS-713."""
     merged_spectrum: Optional[SpectralData] = Field(
         None, description="Espectro fusionado e interpolado a 1nm de resolución"
     )

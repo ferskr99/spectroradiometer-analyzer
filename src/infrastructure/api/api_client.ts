@@ -11,13 +11,13 @@
 
 import type { components } from "./api-types";
 
-export type SensorId = "MS-711" | "MS-712";
+export type SensorId = "MS-711" | "MS-713";
 export type SpectralData = components["schemas"]["SpectralData"];
 export type AnalysisResult = components["schemas"]["AnalysisResult"];
 export type HTTPValidationError = components["schemas"]["HTTPValidationError"];
 
 export interface AnalysisRequest {
-  sensor_target: "MS-711" | "MS-712" | "Merge" | string;
+  sensor_target: "MS-711" | "MS-713" | "Merge" | string;
   exposure_time_ms: number;
   auto_exposure?: boolean;
 }
@@ -94,11 +94,11 @@ export class ApiError extends Error {
  * ```ts
  * const client = new SpectroradiometerApiClient({ baseUrl: "http://localhost:8000" });
  *
- * // Configurar sensor — solo acepta "MS-711" | "MS-712" en compile-time
+ * // Configurar sensor — solo acepta "MS-711" | "MS-713" en compile-time
  * await client.configureSensor({ sensor_id: "MS-711", exposure_time_ms: 100 });
  *
  * // Obtener espectro
- * const spectrum = await client.getSpectrum("MS-712");
+ * const spectrum = await client.getSpectrum("MS-713");
  *
  * // Análisis completo (fusión + PPFD + iluminancia)
  * const result = await client.analyzeSpectra();
@@ -187,7 +187,7 @@ export class SpectroradiometerApiClient {
    * GET /api/v1/sensors/{sensor_id}/spectrum
    *
    * Adquiere el espectro crudo de un sensor específico.
-   * El parámetro `sensorId` está restringido a `"MS-711" | "MS-712"`
+   * El parámetro `sensorId` está restringido a `"MS-711" | "MS-713"`
    * en compile-time gracias al tipo `SensorId`.
    *
    * @param sensorId — Identificador del sensor.

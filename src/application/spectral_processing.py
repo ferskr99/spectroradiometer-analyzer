@@ -1,7 +1,7 @@
 """
 Caso de uso: Procesamiento espectral científico.
 
-Implementa la fusión de datos MS-711 (300-1100nm) y MS-712 (900-1700nm),
+Implementa la fusión de datos MS-711 (300-1100nm) y MS-713 (900-2500nm),
 el cálculo de PPFD (400-700nm) y la iluminancia fotópica (380-780nm).
 
 Referencias físicas:
@@ -59,10 +59,10 @@ class SpectralProcessorUseCase:
     @staticmethod
     def merge_and_interpolate(
         ms711_data: SpectralData,
-        ms712_data: SpectralData,
+        ms713_data: SpectralData,
     ) -> SpectralData:
         """
-        Fusiona los espectros del MS-711 (300-1100nm) y MS-712 (900-1700nm),
+        Fusiona los espectros del MS-711 (300-1100nm) y MS-713 (900-2500nm),
         eliminando la zona de superposición (900-1100nm) mediante promediado
         ponderado, e interpola el resultado a intervalos de exactamente 1nm.
 
@@ -73,17 +73,17 @@ class SpectralProcessorUseCase:
 
         Args:
             ms711_data: Espectro del MS-711 (UV-VIS-NIR corto).
-            ms712_data: Espectro del MS-712 (NIR largo).
+            ms713_data: Espectro del MS-713 (NIR largo).
 
         Returns:
             SpectralData con el espectro fusionado a resolución de 1nm.
         """
         wl_711 = np.array(ms711_data.wavelengths)
         ir_711 = np.array(ms711_data.irradiance)
-        wl_712 = np.array(ms712_data.wavelengths)
-        ir_712 = np.array(ms712_data.irradiance)
+        wl_712 = np.array(ms713_data.wavelengths)
+        ir_712 = np.array(ms713_data.irradiance)
 
-        # Rango global: desde el mínimo del MS-711 hasta el máximo del MS-712
+        # Rango global: desde el mínimo del MS-711 hasta el máximo del MS-713
         wl_start = int(np.ceil(wl_711.min()))
         wl_end   = int(np.floor(wl_712.max()))
         merged_wl = np.arange(wl_start, wl_end + 1, 1.0)
@@ -108,7 +108,7 @@ class SpectralProcessorUseCase:
                 # Solo MS-711 tiene datos en esta zona
                 merged_ir[i] = interp_711(wl)
             else:
-                # Solo MS-712 tiene datos en esta zona
+                # Solo MS-713 tiene datos en esta zona
                 merged_ir[i] = interp_712(wl)
 
         return SpectralData(

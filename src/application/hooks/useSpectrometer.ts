@@ -37,7 +37,7 @@ export const spectrometerKeys = {
  * Expone los estados de React Query junto con helpers tipados.
  */
 export interface UseAnalyzeSpectrumReturn {
-  /** Dispara la adquisición y configuración atómica (MS-711, MS-712 o fusión). */
+  /** Dispara la adquisición y configuración atómica (MS-711, MS-713 o fusión). */
   analyze: (request: AnalysisRequest) => void;
   /** Resultado tipado del análisis (disponible cuando isSuccess=true). */
   data: AnalysisResult | undefined;
@@ -94,7 +94,7 @@ export function useAnalyzeSpectrum(): UseAnalyzeSpectrumReturn {
  * Hook reactivo para obtener el espectro de un sensor individual.
  * Se activa solo cuando `enabled=true`.
  *
- * @param sensorId — "MS-711" o "MS-712" (type-safe en compile-time).
+ * @param sensorId — "MS-711" o "MS-713" (type-safe en compile-time).
  * @param enabled — Controla si la query se ejecuta automáticamente.
  */
 export function useSpectrum(sensorId: SensorId, enabled = false) {

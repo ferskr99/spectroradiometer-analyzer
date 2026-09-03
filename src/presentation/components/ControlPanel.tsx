@@ -10,7 +10,7 @@ const EXPOSURE_MIN = 10;
 const EXPOSURE_MAX = 5000;
 const EXPOSURE_DEFAULT = 100;
 
-type SensorMode = "MS-711" | "MS-712" | "Merge";
+type SensorMode = "MS-711" | "MS-713" | "Merge";
 
 interface SensorOption {
   id: SensorMode;
@@ -27,15 +27,15 @@ const SENSOR_OPTIONS: SensorOption[] = [
     icon: <Minimize size={18} />,
   },
   {
-    id: "MS-712",
-    label: "MS-712",
-    description: "NIR ext. (900–1700 nm)",
+    id: "MS-713",
+    label: "MS-713",
+    description: "NIR ext. (900–2500 nm)",
     icon: <Maximize size={18} />,
   },
   {
     id: "Merge",
     label: "Fusión",
-    description: "Completo (300–1700 nm)",
+    description: "Completo (300–2500 nm)",
     icon: <Combine size={18} />,
   },
 ];
@@ -47,8 +47,8 @@ export interface ControlPanelProps {
   isPending: boolean;
   isSuccess?: boolean;
   errorMessage?: string | null;
-  sensorTarget: "MS-711" | "MS-712" | "Merge";
-  onSensorTargetChange: (sensor: "MS-711" | "MS-712" | "Merge") => void;
+  sensorTarget: "MS-711" | "MS-713" | "Merge";
+  onSensorTargetChange: (sensor: "MS-711" | "MS-713" | "Merge") => void;
   exposureTime: number;
   onExposureTimeChange: (time: number) => void;
 }
@@ -215,7 +215,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           ) : (
             <div style={styles.infoBar}>
               <span style={styles.infoText}>
-                Modo: {sensorTarget === "Merge" ? "Sincronizado (MS-711 + MS-712)" : `Individual (${sensorTarget})`}
+                Modo: {sensorTarget === "Merge" ? "Sincronizado (MS-711 + MS-713)" : `Individual (${sensorTarget})`}
               </span>
               <span style={styles.infoText}>
                 Timeout HW: ~{Math.ceil(exposureTime / 1000)}–{Math.ceil((exposureTime * 1.5) / 1000)}s

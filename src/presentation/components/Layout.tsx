@@ -101,7 +101,7 @@ export const Layout: React.FC = () => {
               <Settings size={14} /> EKO Instruments
             </div>
             <div style={styles.headerBadge}>
-              MS-711 / MS-712
+              MS-711 / MS-713
             </div>
           </div>
         </header>

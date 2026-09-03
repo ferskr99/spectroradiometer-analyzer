@@ -15,7 +15,7 @@ import { Clock, FileText, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 export const Dashboard: React.FC = () => {
-  const [sensorTarget, setSensorTarget] = useState<"MS-711" | "MS-712" | "Merge">("Merge");
+  const [sensorTarget, setSensorTarget] = useState<"MS-711" | "MS-713" | "Merge">("Merge");
   const [exposureTime, setExposureTime] = useState(100);
   const {
     analyze,

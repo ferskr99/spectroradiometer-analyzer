@@ -99,7 +99,7 @@
             "type": "string",
             "enum": [
               "MS-711",
-              "MS-712",
+              "MS-713",
               "Merge"
             ],
             "title": "Sensor Target",
@@ -163,7 +163,7 @@
           "total_irradiance"
         ],
         "title": "AnalysisResult",
-        "description": "Resultado del análisis espectral combinado MS-711 + MS-712."
+        "description": "Resultado del análisis espectral combinado MS-711 + MS-713."
       },
       "HTTPValidationError": {
         "properties": {

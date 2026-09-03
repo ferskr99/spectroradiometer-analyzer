@@ -38,7 +38,7 @@ export const SettingsView: React.FC = () => {
             </div>
 
             <div style={styles.formGroup}>
-              <label style={styles.label}>MS-712 COM Port</label>
+              <label style={styles.label}>MS-713 COM Port</label>
               <select style={styles.select} defaultValue="COM4">
                 <option value="COM1">COM1</option>
                 <option value="COM2">COM2</option>

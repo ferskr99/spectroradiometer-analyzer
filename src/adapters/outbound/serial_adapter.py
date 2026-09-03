@@ -7,7 +7,7 @@ from src.domain.models import SpectrometerConfig, SpectralData
 class EkoSerialAdapter(SpectroradiometerPort):
     """
     Adaptador concreto para la comunicación RS-232C con las fuentes 
-    de los espectrorradiómetros MS-711 y MS-712.
+    de los espectrorradiómetros MS-711 y MS-713.
     """
     def __init__(self, baudrate: int = 9600, timeout: int = 2):
         self.baudrate = baudrate
