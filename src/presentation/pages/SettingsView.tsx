@@ -15,7 +15,7 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      <div style={styles.grid}>
+      <div style={styles.grid} className="settings-grid">
         {/* Panel de Hardware */}
         <div style={styles.card}>
           <div style={styles.cardHeader}>

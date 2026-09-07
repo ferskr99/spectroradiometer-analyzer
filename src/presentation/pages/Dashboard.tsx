@@ -27,9 +27,9 @@ export const Dashboard: React.FC = () => {
   } = useAnalyzeSpectrum();
 
   return (
-    <main style={styles.main}>
+    <main style={styles.main} className="main-dashboard">
       {/* 1. Fila Superior (Control + Scheduler) */}
-      <div style={styles.topRow}>
+      <div style={styles.topRow} className="top-row">
         <ControlPanel
           onAnalyze={analyze}
           isPending={isPending}
@@ -55,7 +55,7 @@ export const Dashboard: React.FC = () => {
         <SpectralGraph
           data={data?.merged_spectrum ?? null}
           isLoading={isPending}
-          height={420}
+          height="100%"
         />
         <div style={styles.statusBar}>
           <div style={styles.statusLeft}>
@@ -97,21 +97,23 @@ const styles: Record<string, React.CSSProperties> = {
   main: {
     display: "flex",
     flexDirection: "column",
-    gap: 16,
-    padding: "20px 32px",
+    gap: 12,
+    padding: "16px 20px",
+    height: "calc(100vh - 48px)",
+    overflow: "hidden",
     flex: 1,
     minHeight: 0,
     backgroundColor: "#111111",
   },
   topRow: {
     display: "flex",
-    gap: 16,
+    gap: 12,
     alignItems: "stretch",
   },
   graphWrapper: {
     display: "flex",
     flexDirection: "column",
-    gap: 16,
+    gap: 12,
     flex: 1,
     minHeight: 0,
   },
@@ -119,7 +121,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "10px 16px",
+    padding: "8px 16px",
     backgroundColor: "#1e1e1e",
     border: "1px solid #333333",
     borderRadius: 4,

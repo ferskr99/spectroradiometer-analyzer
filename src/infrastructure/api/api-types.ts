@@ -90,6 +90,32 @@ export interface components {
              * @description Irradiancia total integrada sobre el rango completo (W/m²)
              */
             total_irradiance: number;
+            /**
+             * Applied Exposure Ms
+             * @description El tiempo de exposición real usado en ms
+             */
+            applied_exposure_ms?: number | null;
+            /**
+             * Pwv Cm
+             * @description Vapor de Agua Precipitable (cm) calculado por inversión empírica
+             */
+            pwv_cm?: number | null;
+            /**
+             * Aod Bands
+             * @description Espesor Óptico de Aerosoles (AOD) por longitud de onda {nm: valor}
+             */
+            aod_bands?: Record<string, number> | null;
+            /**
+             * Solar Geometry
+             * @description Parámetros de geometría solar (SZA, elevación, masa de aire)
+             */
+            solar_geometry?: {
+                sza: number;
+                elevation: number;
+                azimuth: number;
+                air_mass: number | null;
+                air_mass_absolute: number | null;
+            } | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {

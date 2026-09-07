@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 # pyrefly: ignore [missing-import]
 import uvicorn
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.adapters.inbound.api_routes import router as sensors_router

@@ -20,7 +20,7 @@ import { ExpandedGraphModal } from "./ExpandedGraphModal";
 export interface SpectralGraphProps {
   data: SpectralData | null;
   isLoading: boolean;
-  height?: number;
+  height?: number | string;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
         </div>
 
         <div style={styles.chartWrapper}>
-          <ResponsiveContainer width="100%" height={height - 110}>
+          <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
               margin={{ top: 25, right: 30, left: 20, bottom: 35 }}
@@ -261,6 +261,15 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #333333",
     padding: "20px 24px 12px",
     fontFamily: "'Inter', system-ui, sans-serif",
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+  },
+  chartArea: {
+    flex: 1,
+    minHeight: 0,
+    position: "relative",
+    width: "100%",
   },
   header: {
     display: "flex",
@@ -296,6 +305,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "'JetBrains Mono', monospace",
   },
   chartWrapper: {
+    flex: 1,
+    minHeight: 0,
+    position: "relative",
+    width: "100%",
     position: "relative",
     width: "100%",
   },

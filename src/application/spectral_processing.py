@@ -269,3 +269,167 @@ class SpectralProcessorUseCase:
         integral = trapezoid(ir, wl)
 
         return round(float(integral * 1e-3), 4)
+
+    # ─────────────────────────────────────────────────────────────────
+    # CÁLCULOS ATMOSFÉRICOS AVANZADOS (PWV y AOD)
+    # ─────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def calculate_pwv(
+        spectrum: SpectralData,
+        air_mass: float,
+        band: str = '940nm',
+    ) -> float:
+        """
+        Calcula el Vapor de Agua Precipitable (PWV) a partir de la
+        transmitancia en la banda de absorción de H₂O.
+
+        Método: Inversión empírica de Ingold et al. (2000).
+        Se construye una línea base (baseline) interpolando linealmente
+        entre los extremos de la banda de absorción. La transmitancia
+        del vapor de agua T_w se obtiene como:
+
+            T_w = I_measured(λ_center) / I_baseline(λ_center)
+
+        Luego se invierte la relación empírica:
+
+            ln(T_w) = -a × (m × PWV)^b
+
+        Para obtener:
+
+            PWV = ( -ln(T_w) / a )^(1/b) / m
+
+        Args:
+            spectrum: Espectro fusionado (debe cubrir la banda elegida).
+            air_mass: Masa de aire óptica relativa en el momento de la medición.
+            band: Banda de absorción a usar ('940nm' o '1370nm').
+
+        Returns:
+            PWV en centímetros de agua precipitable.
+        """
+        from src.domain.reference_spectra import PWV_BANDS
+
+        if band not in PWV_BANDS:
+            return -1.0
+
+        params = PWV_BANDS[band]
+        wl = np.array(spectrum.wavelengths)
+        ir = np.array(spectrum.irradiance)
+
+        # Extraer irradiancia en los puntos de anclaje de la línea base
+        left_wl = params['baseline_left']
+        right_wl = params['baseline_right']
+        center_wl = params['center']
+
+        # Interpolador del espectro medido
+        interp_fn = interp1d(wl, ir, kind='linear', bounds_error=False, fill_value=0.0)
+
+        I_left = float(interp_fn(left_wl))
+        I_right = float(interp_fn(right_wl))
+        I_center = float(interp_fn(center_wl))
+
+        # Línea base: interpolación lineal entre los extremos
+        if right_wl == left_wl:
+            return -1.0
+        I_baseline_center = I_left + (I_right - I_left) * (center_wl - left_wl) / (right_wl - left_wl)
+
+        # Transmitancia del vapor de agua
+        if I_baseline_center <= 0 or I_center <= 0:
+            return -1.0
+        T_w = I_center / I_baseline_center
+
+        if T_w >= 1.0:
+            return 0.0  # Sin absorción detectable
+
+        # Inversión empírica: PWV = ( -ln(T_w) / a )^(1/b) / m
+        a = params['a']
+        b = params['b']
+
+        if air_mass is None or air_mass <= 0:
+            return -1.0
+
+        try:
+            ln_Tw = np.log(T_w)
+            pwv = ((-ln_Tw) / a) ** (1.0 / b) / air_mass
+            return round(float(pwv), 4)
+        except (ValueError, ZeroDivisionError):
+            return -1.0
+
+    @staticmethod
+    def calculate_aod(
+        spectrum: SpectralData,
+        air_mass: float,
+        pressure_hpa: float = 1013.25,
+        wavelengths: list = None,
+    ) -> dict:
+        """
+        Calcula el Espesor Óptico de Aerosoles (AOD) mediante la
+        Ley de Bouguer-Lambert-Beer.
+
+        Para cada longitud de onda λ:
+
+            I(λ) = I₀(λ) × exp( -m × [τ_a(λ) + τ_r(λ) + τ_gas(λ)] )
+
+        Despejando el AOD:
+
+            τ_a(λ) = [ ln(I₀(λ)) - ln(I(λ)) ] / m  -  τ_r(λ)  -  τ_gas(λ)
+
+        Args:
+            spectrum: Espectro fusionado a 1nm de resolución.
+            air_mass: Masa de aire óptica relativa.
+            pressure_hpa: Presión atmosférica local en hPa.
+            wavelengths: Lista de longitudes de onda para calcular AOD.
+                         Si es None, usa las bandas AERONET estándar.
+
+        Returns:
+            dict con formato {wavelength_nm: aod_value}.
+            Valores negativos indican error o saturación.
+        """
+        from src.domain.reference_spectra import (
+            EXTRATERRESTRIAL_SPECTRUM,
+            GAS_ABSORPTION_OD,
+            AOD_WAVELENGTHS,
+            rayleigh_optical_depth,
+        )
+
+        if wavelengths is None:
+            wavelengths = AOD_WAVELENGTHS
+
+        if air_mass is None or air_mass <= 0:
+            return {wl: -1.0 for wl in wavelengths}
+
+        wl = np.array(spectrum.wavelengths)
+        ir = np.array(spectrum.irradiance)
+
+        # Interpolador del espectro medido
+        interp_fn = interp1d(wl, ir, kind='linear', bounds_error=False, fill_value=0.0)
+
+        aod_results = {}
+
+        for target_wl in wavelengths:
+            # Irradiancia medida a nivel del suelo
+            I_measured = float(interp_fn(target_wl))
+
+            # Irradiancia extraterrestre I₀
+            I0 = EXTRATERRESTRIAL_SPECTRUM.get(target_wl)
+            if I0 is None or I0 <= 0 or I_measured <= 0:
+                aod_results[target_wl] = -1.0
+                continue
+
+            # Profundidad óptica de Rayleigh
+            tau_r = rayleigh_optical_depth(target_wl, pressure_hpa)
+
+            # Absorción gaseosa (O₃, NO₂, etc.)
+            tau_gas = GAS_ABSORPTION_OD.get(target_wl, 0.0)
+
+            # Ley de Bouguer-Lambert-Beer invertida
+            try:
+                tau_total = (np.log(I0) - np.log(I_measured)) / air_mass
+                tau_a = tau_total - tau_r - tau_gas
+
+                # Clamp: AOD no debería ser negativo en condiciones normales
+                aod_results[target_wl] = round(max(float(tau_a), 0.0), 6)
+            except (ValueError, ZeroDivisionError):
+                aod_results[target_wl] = -1.0
+
+        return aod_results

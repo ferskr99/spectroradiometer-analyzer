@@ -1,10 +1,9 @@
 import React, { useMemo } from "react";
-import type { AnalysisRequest } from "../../infrastructure/api";
-import { Sun, Leaf, Lightbulb, Zap } from "lucide-react";
 import type { AnalysisResult } from "../../infrastructure/api";
+import { Sun, Leaf, Lightbulb, Zap, Droplets, Wind, Compass, Mountain } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────
-// Definición de métricas
+// Definición de métricas consolidadas (8 métricas en línea SCADA)
 // ─────────────────────────────────────────────────────────────────────
 
 interface MetricDefinition {
@@ -13,52 +12,82 @@ interface MetricDefinition {
   unit: string;
   icon: React.ReactNode;
   color: string;
-  getValue: (result: AnalysisResult) => number;
+  getValue: (result: AnalysisResult) => number | null;
   format: (value: number) => string;
-  description: string;
 }
 
-const METRICS: MetricDefinition[] = [
+const ALL_METRICS: MetricDefinition[] = [
   {
     id: "par",
     label: "PAR",
     unit: "W/m²",
-    icon: <Sun size={14} />,
+    icon: <Sun size={12} />,
     color: "#eab308",
     getValue: (r) => r.par,
     format: (v) => v.toFixed(4),
-    description: "Radiación Fotosintéticamente Activa (400–700 nm)",
   },
   {
     id: "ppfd",
     label: "PPFD",
-    unit: "µmol/m²/s",
-    icon: <Leaf size={14} />,
+    unit: "µmol",
+    icon: <Leaf size={12} />,
     color: "#10b981",
     getValue: (r) => r.ppfd,
     format: (v) => v.toFixed(4),
-    description: "Densidad de Flujo de Fotones",
   },
   {
     id: "illuminance",
-    label: "Iluminancia",
+    label: "LUX",
     unit: "lx",
-    icon: <Lightbulb size={14} />,
+    icon: <Lightbulb size={12} />,
     color: "#3b82f6",
     getValue: (r) => r.illuminance,
-    format: (v) =>
-      v >= 1000 ? `${(v / 1000).toFixed(2)}k` : v.toFixed(2),
-    description: "Ponderación fotópica CIE 1931",
+    format: (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(1)),
   },
   {
     id: "total-irradiance",
-    label: "Irradiancia Total",
+    label: "TOTAL",
     unit: "W/m²",
-    icon: <Zap size={14} />,
+    icon: <Zap size={12} />,
     color: "#a855f7",
     getValue: (r) => r.total_irradiance,
     format: (v) => v.toFixed(4),
-    description: "Integral rango completo",
+  },
+  {
+    id: "pwv",
+    label: "PWV",
+    unit: "cm",
+    icon: <Droplets size={12} />,
+    color: "#06b6d4",
+    getValue: (r) => r.pwv_cm ?? null,
+    format: (v) => (v >= 0 ? v.toFixed(3) : "N/D"),
+  },
+  {
+    id: "aod-500",
+    label: "AOD₅₀₀",
+    unit: "τ",
+    icon: <Wind size={12} />,
+    color: "#f97316",
+    getValue: (r) => (r.aod_bands ? (r.aod_bands["500"] ?? null) : null),
+    format: (v) => (v >= 0 ? v.toFixed(3) : "N/D"),
+  },
+  {
+    id: "sza",
+    label: "SZA",
+    unit: "°",
+    icon: <Compass size={12} />,
+    color: "#ec4899",
+    getValue: (r) => r.solar_geometry?.sza ?? null,
+    format: (v) => v.toFixed(2),
+  },
+  {
+    id: "air-mass",
+    label: "AM",
+    unit: "AM",
+    icon: <Mountain size={12} />,
+    color: "#8b5cf6",
+    getValue: (r) => r.solar_geometry?.air_mass ?? null,
+    format: (v) => v.toFixed(3),
   },
 ];
 
@@ -67,13 +96,49 @@ export interface MetricsSummaryProps {
   isLoading: boolean;
 }
 
+const MetricCard: React.FC<{
+  metric: MetricDefinition;
+  value: number | null;
+  isLoading: boolean;
+}> = ({ metric, value, isLoading }) => (
+  <div
+    style={{
+      ...styles.card,
+      borderColor: isLoading ? "#2a2a2a" : "#333333",
+    }}
+  >
+    <div style={styles.cardHeader}>
+      <span style={{ ...styles.cardIcon, color: metric.color }}>{metric.icon}</span>
+      <span style={styles.cardLabel}>{metric.label}</span>
+    </div>
+
+    {isLoading ? (
+      <div style={styles.skeletonContainer}>
+        <div style={styles.skeletonValue} />
+      </div>
+    ) : (
+      <div style={styles.valueContainer}>
+        <span
+          style={{
+            ...styles.cardValue,
+            color: value !== null && value >= 0 ? "#e0e0e0" : "#555555",
+          }}
+        >
+          {value !== null ? metric.format(value) : "—"}
+        </span>
+        <span style={styles.cardUnit}>{metric.unit}</span>
+      </div>
+    )}
+  </div>
+);
+
 export const MetricsSummary: React.FC<MetricsSummaryProps> = ({
   data,
   isLoading,
 }) => {
   const computedValues = useMemo(() => {
     if (!data) return null;
-    return METRICS.map((m) => ({
+    return ALL_METRICS.map((m) => ({
       id: m.id,
       value: m.getValue(data),
     }));
@@ -81,44 +146,16 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({
 
   return (
     <div style={styles.container}>
-      <h3 style={styles.sectionTitle}>Lecturas Radiométricas</h3>
-      <div style={styles.grid}>
-        {METRICS.map((metric) => {
+      <div style={styles.grid} className="metrics-grid">
+        {ALL_METRICS.map((metric) => {
           const computed = computedValues?.find((c) => c.id === metric.id);
-
           return (
-            <div
+            <MetricCard
               key={metric.id}
-              style={{
-                ...styles.card,
-                borderColor: isLoading ? "#2a2a2a" : "#333333",
-              }}
-            >
-              <div style={styles.cardHeader}>
-                <span style={{...styles.cardIcon, color: metric.color}}>{metric.icon}</span>
-                <span style={styles.cardLabel}>{metric.label}</span>
-              </div>
-
-              {isLoading ? (
-                <div style={styles.skeletonContainer}>
-                  <div style={styles.skeletonValue} />
-                </div>
-              ) : (
-                <div style={styles.valueContainer}>
-                  <span
-                    style={{
-                      ...styles.cardValue,
-                      color: computed && computed.value > 0 ? "#e0e0e0" : "#555555",
-                    }}
-                  >
-                    {computed ? metric.format(computed.value) : "—"}
-                  </span>
-                  <span style={styles.cardUnit}>{metric.unit}</span>
-                </div>
-              )}
-
-              <p style={styles.cardDescription}>{metric.description}</p>
-            </div>
+              metric={metric}
+              value={computed?.value ?? null}
+              isLoading={isLoading}
+            />
           );
         })}
       </div>
@@ -129,33 +166,26 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({
 const styles: Record<string, React.CSSProperties> = {
   container: {
     fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  sectionTitle: {
-    color: "#cccccc",
-    fontSize: 12,
-    fontWeight: 600,
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-    margin: "0 0 16px 0",
+    width: "100%",
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: 24,
+    gridTemplateColumns: "repeat(8, 1fr)",
+    gap: 8,
   },
   card: {
     backgroundColor: "#1e1e1e",
     borderRadius: 4,
     border: "1px solid #333333",
-    padding: "20px 24px",
+    padding: "8px 12px",
     display: "flex",
     flexDirection: "column",
   },
   cardHeader: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 4,
   },
   cardIcon: {
     display: "flex",
@@ -163,18 +193,17 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardLabel: {
     color: "#cccccc",
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 600,
     textTransform: "uppercase" as const,
   },
   valueContainer: {
     display: "flex",
     alignItems: "baseline",
-    gap: 6,
-    marginBottom: 8,
+    gap: 4,
   },
   cardValue: {
-    fontSize: 28,
+    fontSize: 16,
     fontWeight: 600,
     fontFamily: "'JetBrains Mono', monospace",
     lineHeight: 1,
@@ -182,26 +211,19 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardUnit: {
     color: "#888888",
-    fontSize: 12,
+    fontSize: 9,
     fontFamily: "'JetBrains Mono', monospace",
-  },
-  cardDescription: {
-    color: "#888888",
-    fontSize: 11,
-    margin: 0,
-    lineHeight: 1.4,
   },
   skeletonContainer: {
     display: "flex",
     flexDirection: "column",
-    gap: 6,
-    marginBottom: 6,
-    height: 28,
+    gap: 4,
+    height: 16,
     justifyContent: "center",
   },
   skeletonValue: {
-    width: "60%",
-    height: 20,
+    width: "70%",
+    height: 12,
     backgroundColor: "#333333",
     borderRadius: 2,
   },

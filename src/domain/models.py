@@ -49,3 +49,12 @@ class AnalysisResult(BaseModel):
     applied_exposure_ms: Optional[int] = Field(
         None, description="El tiempo de exposición real usado en ms"
     )
+    pwv_cm: Optional[float] = Field(
+        None, description="Vapor de Agua Precipitable (cm) calculado por inversión empírica"
+    )
+    aod_bands: Optional[dict] = Field(
+        None, description="Espesor Óptico de Aerosoles (AOD) por longitud de onda {nm: valor}"
+    )
+    solar_geometry: Optional[dict] = Field(
+        None, description="Parámetros de geometría solar (SZA, elevación, masa de aire)"
+    )

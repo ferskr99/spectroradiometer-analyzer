@@ -8,17 +8,17 @@ export const Layout: React.FC = () => {
   // Mantener la conexión WS global mientras la app esté abierta
   useAppWebSocket();
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="app-page">
       <SplashScreen />
       <style>{globalCSS}</style>
       
       {/* Sidebar Navigation */}
-      <nav style={styles.sidebar}>
-        <div style={styles.logoSection} title="Spectroradiometer Analyzer v1.0.0">
+      <nav style={styles.sidebar} className="app-sidebar">
+        <div style={styles.logoSection} className="logo-section" title="Spectroradiometer Analyzer v1.0.0">
           <Activity size={24} color="#e0e0e0" />
         </div>
 
-        <div style={styles.navLinks}>
+        <div style={styles.navLinks} className="nav-links">
           <NavLink 
             to="/" 
             style={({ isActive }) => ({
@@ -75,7 +75,7 @@ export const Layout: React.FC = () => {
           </NavLink>
         </div>
 
-        <div style={styles.bottomSection}>
+        <div style={styles.bottomSection} className="bottom-section">
           <NavLink 
             to="/settings" 
             style={({ isActive }) => ({
@@ -90,13 +90,13 @@ export const Layout: React.FC = () => {
       </nav>
 
       {/* Main Content Area */}
-      <div style={styles.contentArea}>
-        <header style={styles.header}>
+      <div style={styles.contentArea} className="app-content">
+        <header style={styles.header} className="app-header">
           <div style={styles.headerLeft}>
             <h1 style={styles.appTitle}>Spectroradiometer Analyzer</h1>
             <span style={styles.version}>v1.0.0</span>
           </div>
-          <div style={styles.headerRight}>
+          <div style={styles.headerRight} className="header-right">
             <div style={styles.headerBadge}>
               <Settings size={14} /> EKO Instruments
             </div>
@@ -182,6 +182,81 @@ const globalCSS = `
     background: #333333;
     border-radius: 4px;
   }
+
+  /* ─── Responsive Breakpoints ──────────────────────────────── */
+
+  /* Tablets y pantallas medianas (< 1200px) */
+  @media (max-width: 1200px) {
+    .metrics-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .top-row {
+      flex-direction: column !important;
+    }
+  }
+
+  /* Pantallas pequeñas (< 768px) */
+  @media (max-width: 768px) {
+    .app-page {
+      flex-direction: column !important;
+    }
+    .app-sidebar {
+      width: 100% !important;
+      height: 56px !important;
+      flex-direction: row !important;
+      border-right: none !important;
+      border-bottom: 1px solid #333333 !important;
+      padding: 0 8px !important;
+      overflow-x: auto !important;
+    }
+    .app-sidebar .logo-section {
+      margin-bottom: 0 !important;
+      margin-right: 16px !important;
+    }
+    .nav-links {
+      flex-direction: row !important;
+      gap: 4px !important;
+      flex: 1 !important;
+    }
+    .bottom-section {
+      margin-top: 0 !important;
+      margin-left: auto !important;
+    }
+    .app-content {
+      height: auto !important;
+      min-height: calc(100vh - 56px) !important;
+    }
+    .app-header {
+      padding: 0 12px !important;
+    }
+    .header-right {
+      display: none !important;
+    }
+    .main-dashboard {
+      padding: 12px !important;
+      gap: 12px !important;
+    }
+    .metrics-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .spectral-graph-container {
+      height: 280px !important;
+    }
+    .settings-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  /* Pantallas muy pequeñas (< 480px) */
+  @media (max-width: 480px) {
+    .metrics-grid {
+      grid-template-columns: 1fr !important;
+      gap: 8px !important;
+    }
+    .app-header h1 {
+      font-size: 12px !important;
+    }
+  }
 `;
 
 const styles: Record<string, React.CSSProperties> = {
@@ -236,7 +311,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     minWidth: 0,
     height: "100vh",
-    overflowY: "auto",
+    overflowY: "hidden",
     backgroundColor: "#111111",
   },
   header: {

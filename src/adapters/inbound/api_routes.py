@@ -14,6 +14,7 @@ from src.infrastructure.db.models import MeasurementRecord
 from src.infrastructure.db.models import MeasurementRecord
 from src.application.advanced_scheduler import AdvancedScheduler, SchedulerConfig
 from src.application.websocket_manager import ws_manager
+from src.application.solar_geometry import SolarGeometry
 
 router = APIRouter(prefix="/api/v1/sensors", tags=["Hardware"])
 
@@ -113,13 +114,26 @@ async def analyze_spectra(
     illuminance = SpectralProcessorUseCase.calculate_illuminance(interpolated)
     total_irradiance = SpectralProcessorUseCase.calculate_total_irradiance(interpolated)
 
+    # 4. Geometría Solar y cálculos atmosféricos (PWV, AOD)
+    solar = SolarGeometry()
+    solar_pos = solar.get_solar_position()
+    air_mass = solar_pos.get('air_mass')
+
+    pwv = SpectralProcessorUseCase.calculate_pwv(interpolated, air_mass, band='940nm')
+    aod = SpectralProcessorUseCase.calculate_aod(
+        interpolated, air_mass, pressure_hpa=solar.pressure_hpa
+    )
+
     result = AnalysisResult(
         merged_spectrum=interpolated,
         par=par,
         ppfd=ppfd,
         illuminance=illuminance,
         total_irradiance=total_irradiance,
-        applied_exposure_ms=getattr(adapter, "exposure_time_ms", request.exposure_time_ms)
+        applied_exposure_ms=getattr(adapter, "exposure_time_ms", request.exposure_time_ms),
+        pwv_cm=pwv,
+        aod_bands=aod,
+        solar_geometry=solar_pos,
     )
 
     # 4. Guardar en Base de Datos (Datalogger)
