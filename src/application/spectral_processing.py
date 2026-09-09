@@ -11,8 +11,6 @@ Referencias físicas:
 """
 
 import numpy as np
-from scipy.interpolate import interp1d
-from scipy.integrate import trapezoid
 
 from src.domain.models import SpectralData
 
@@ -44,10 +42,8 @@ _V_LAMBDA_VALUES = np.array([
 ], dtype=np.float64)
 
 # Interpolar V(λ) a 1nm de resolución para uso interno
-_v_lambda_interp = interp1d(
-    _V_LAMBDA_WL, _V_LAMBDA_VALUES,
-    kind='linear', bounds_error=False, fill_value=0.0
-)
+def _v_lambda_interp(wl):
+    return np.interp(wl, _V_LAMBDA_WL, _V_LAMBDA_VALUES, left=0.0, right=0.0)
 
 
 class SpectralProcessorUseCase:
@@ -88,28 +84,23 @@ class SpectralProcessorUseCase:
         wl_end   = int(np.floor(wl_712.max()))
         merged_wl = np.arange(wl_start, wl_end + 1, 1.0)
 
-        # Interpoladores individuales
-        interp_711 = interp1d(wl_711, ir_711, kind='linear',
-                              bounds_error=False, fill_value=0.0)
-        interp_712 = interp1d(wl_712, ir_712, kind='linear',
-                              bounds_error=False, fill_value=0.0)
+        # Interpolación vectorizada con np.interp (sin scipy)
+        ir_711_interp = np.interp(merged_wl, wl_711, ir_711, left=0.0, right=0.0)
+        ir_712_interp = np.interp(merged_wl, wl_712, ir_712, left=0.0, right=0.0)
 
         # Zona de superposición: donde ambos sensores tienen datos
         overlap_min = max(wl_711.min(), wl_712.min())
         overlap_max = min(wl_711.max(), wl_712.max())
 
-        merged_ir = np.empty_like(merged_wl)
+        # Máscaras vectorizadas para las tres zonas
+        mask_only_711 = merged_wl < overlap_min
+        mask_overlap  = (merged_wl >= overlap_min) & (merged_wl <= overlap_max)
+        mask_only_713 = merged_wl > overlap_max
 
-        for i, wl in enumerate(merged_wl):
-            if overlap_min <= wl <= overlap_max:
-                # Promedio ponderado en la zona de superposición
-                merged_ir[i] = 0.5 * (interp_711(wl) + interp_712(wl))
-            elif wl < overlap_min:
-                # Solo MS-711 tiene datos en esta zona
-                merged_ir[i] = interp_711(wl)
-            else:
-                # Solo MS-713 tiene datos en esta zona
-                merged_ir[i] = interp_712(wl)
+        merged_ir = np.empty_like(merged_wl)
+        merged_ir[mask_only_711] = ir_711_interp[mask_only_711]
+        merged_ir[mask_overlap]  = 0.5 * (ir_711_interp[mask_overlap] + ir_712_interp[mask_overlap])
+        merged_ir[mask_only_713] = ir_712_interp[mask_only_713]
 
         return SpectralData(
             wavelengths=merged_wl.tolist(),
@@ -158,7 +149,7 @@ class SpectralProcessorUseCase:
         integrand = ir_par * wl_par
 
         # Integral numérica (trapezoidal) sobre λ en nm
-        integral = trapezoid(integrand, wl_par)
+        integral = np.trapezoid(integrand, wl_par)
 
         # Aplicar constantes: convertir a µmol/m²/s
         ppfd = integral * 1e-6 / (_PLANCK_H * _SPEED_C * _AVOGADRO)
@@ -203,7 +194,7 @@ class SpectralProcessorUseCase:
         integrand = ir_vis * v_lambda
 
         # Integral numérica
-        integral = trapezoid(integrand, wl_vis)
+        integral = np.trapezoid(integrand, wl_vis)
 
         # Iluminancia: Km × integral × 1e-3 (conversión µm → nm)
         illuminance = _KM * integral * 1e-3
@@ -241,7 +232,7 @@ class SpectralProcessorUseCase:
 
         # Integral numérica: E(λ) en W/m²/µm, integrado sobre nm
         # Factor ×1e-3 convierte nm → µm para obtener W/m²
-        integral = trapezoid(ir_par, wl_par)
+        integral = np.trapezoid(ir_par, wl_par)
 
         return round(float(integral * 1e-3), 4)
 
@@ -266,7 +257,7 @@ class SpectralProcessorUseCase:
             return 0.0
 
         # Integral sobre todo el rango, con conversión nm → µm
-        integral = trapezoid(ir, wl)
+        integral = np.trapezoid(ir, wl)
 
         return round(float(integral * 1e-3), 4)
 
@@ -321,12 +312,8 @@ class SpectralProcessorUseCase:
         right_wl = params['baseline_right']
         center_wl = params['center']
 
-        # Interpolador del espectro medido
-        interp_fn = interp1d(wl, ir, kind='linear', bounds_error=False, fill_value=0.0)
-
-        I_left = float(interp_fn(left_wl))
-        I_right = float(interp_fn(right_wl))
-        I_center = float(interp_fn(center_wl))
+        # Interpolación con NumPy
+        I_left, I_center, I_right = np.interp([left_wl, center_wl, right_wl], wl, ir, left=0.0, right=0.0)
 
         # Línea base: interpolación lineal entre los extremos
         if right_wl == left_wl:
@@ -361,6 +348,7 @@ class SpectralProcessorUseCase:
         air_mass: float,
         pressure_hpa: float = 1013.25,
         wavelengths: list = None,
+        cr_factor: float = 0.0,
     ) -> dict:
         """
         Calcula el Espesor Óptico de Aerosoles (AOD) mediante la
@@ -401,35 +389,35 @@ class SpectralProcessorUseCase:
         wl = np.array(spectrum.wavelengths)
         ir = np.array(spectrum.irradiance)
 
-        # Interpolador del espectro medido
-        interp_fn = interp1d(wl, ir, kind='linear', bounds_error=False, fill_value=0.0)
-
-        aod_results = {}
-
-        for target_wl in wavelengths:
-            # Irradiancia medida a nivel del suelo
-            I_measured = float(interp_fn(target_wl))
-
-            # Irradiancia extraterrestre I₀
-            I0 = EXTRATERRESTRIAL_SPECTRUM.get(target_wl)
-            if I0 is None or I0 <= 0 or I_measured <= 0:
-                aod_results[target_wl] = -1.0
-                continue
-
-            # Profundidad óptica de Rayleigh
-            tau_r = rayleigh_optical_depth(target_wl, pressure_hpa)
-
-            # Absorción gaseosa (O₃, NO₂, etc.)
-            tau_gas = GAS_ABSORPTION_OD.get(target_wl, 0.0)
-
-            # Ley de Bouguer-Lambert-Beer invertida
-            try:
-                tau_total = (np.log(I0) - np.log(I_measured)) / air_mass
-                tau_a = tau_total - tau_r - tau_gas
-
-                # Clamp: AOD no debería ser negativo en condiciones normales
-                aod_results[target_wl] = round(max(float(tau_a), 0.0), 6)
-            except (ValueError, ZeroDivisionError):
-                aod_results[target_wl] = -1.0
-
-        return aod_results
+        # Vectorización con NumPy
+        wl_arr = np.array(wavelengths, dtype=np.float64)
+        
+        # 1. Interpolar I(λ) medida
+        I_measured = np.interp(wl_arr, wl, ir, left=0.0, right=0.0)
+        
+        # 2. Obtener I₀(λ) y τ_gas(λ)
+        I0 = np.array([EXTRATERRESTRIAL_SPECTRUM.get(w, 0.0) for w in wavelengths], dtype=np.float64)
+        tau_gas = np.array([GAS_ABSORPTION_OD.get(w, 0.0) for w in wavelengths], dtype=np.float64)
+        
+        # 3. Calcular τ_r vectorizado
+        tau_r = rayleigh_optical_depth(wl_arr, pressure_hpa)
+        
+        # 4. Máscara de validez
+        valid = (I0 > 0) & (I_measured > 0)
+        
+        # 5. Cálculo de AOD base
+        aod_vals = np.full_like(wl_arr, -1.0)
+        
+        if np.any(valid):
+            # Ley de Bouguer-Lambert-Beer invertida vectorizada
+            tau_total = (np.log(I0[valid]) - np.log(I_measured[valid])) / air_mass
+            tau_a = tau_total - tau_r[valid] - tau_gas[valid]
+            
+            # Corrección de Radiación Circunsolar (CSR)
+            if cr_factor > 0.0:
+                tau_a += np.log(1.0 / (1.0 - cr_factor))
+                
+            # Clamp a 0
+            aod_vals[valid] = np.maximum(tau_a, 0.0)
+            
+        return {wl: round(float(val), 6) for wl, val in zip(wavelengths, aod_vals)}

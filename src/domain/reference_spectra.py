@@ -56,20 +56,16 @@ GAS_ABSORPTION_OD = {
 #    Donde A ≈ 0.00879, B ≈ 4.09 (ajuste empírico preciso)
 #    y λ está en micrómetros.
 # ─────────────────────────────────────────────────────────────────────
-def rayleigh_optical_depth(wavelength_nm: float, pressure_hpa: float = 1013.25) -> float:
+def rayleigh_optical_depth(wavelength_nm, pressure_hpa: float = 1013.25):
     """
-    Calcula la profundidad óptica de Rayleigh para una longitud de onda dada.
+    Calcula la profundidad óptica de Rayleigh.
+    Permite broadcasting si wavelength_nm es un array NumPy.
     
-    Args:
-        wavelength_nm: Longitud de onda en nm.
-        pressure_hpa: Presión atmosférica local en hPa.
-        
-    Returns:
-        Profundidad óptica de Rayleigh (adimensional).
+    Fórmula exacta: τ_r = (p/p₀) × 0.0088 × λ^(-4.05) [donde λ está en µm]
     """
-    wl_um = wavelength_nm / 1000.0  # nm → µm
+    wl_um = np.asarray(wavelength_nm) / 1000.0  # nm → µm
     p_ratio = pressure_hpa / 1013.25
-    return p_ratio * 0.00879 * wl_um ** (-4.09)
+    return p_ratio * 0.0088 * (wl_um ** -4.05)
 
 
 # ─────────────────────────────────────────────────────────────────────
