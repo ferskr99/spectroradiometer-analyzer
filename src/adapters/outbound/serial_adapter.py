@@ -43,3 +43,20 @@ class EkoSerialAdapter(SpectroradiometerPort):
     async def read_spectrum(self, sensor_id: str) -> SpectralData:
         # Implementación pendiente: parseo de la trama binaria WSD
         pass
+
+    async def read_instrument_status(self, sensor_id: str) -> dict:
+        """
+        Lee telemetría del instrumento via RS-232C.
+        Implementación pendiente: parseo de comandos STATUS del protocolo EKO.
+        """
+        from src.domain.exceptions import HardwareConnectionError
+        if not self.connection or not self.connection.is_open:
+            raise HardwareConnectionError(
+                sensor_id=sensor_id,
+                detail="Puerto serial cerrado o desconectado"
+            )
+        # TODO: Enviar comando STATUS y parsear respuesta binaria
+        return {
+            "sensor_id": sensor_id,
+            "connection": "Connected" if self.connection.is_open else "Disconnected",
+        }

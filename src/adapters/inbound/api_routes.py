@@ -4,29 +4,119 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import io
 import csv
+import asyncio
+import logging
+from datetime import datetime, timezone
 
 from src.domain.models import SpectrometerConfig, SpectralData, AnalysisResult, AnalysisRequest
 from src.domain.ports.hardware_port import SpectroradiometerPort
+from src.domain.exceptions import (
+    HardwareConnectionError,
+    HardwareTimeoutError,
+    SpectralProcessingError,
+    SCADABaseError,
+)
 from src.application.dependencies import get_hardware_adapter
 from src.application.spectral_processing import SpectralProcessorUseCase
 from src.infrastructure.db.database import get_db
-from src.infrastructure.db.models import MeasurementRecord
 from src.infrastructure.db.models import MeasurementRecord
 from src.application.advanced_scheduler import AdvancedScheduler, SchedulerConfig
 from src.application.websocket_manager import ws_manager
 from src.application.solar_geometry import SolarGeometry
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/sensors", tags=["Hardware"])
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """Canal WebSocket genérico para eventos (mediciones, alertas)."""
     await ws_manager.connect(websocket)
     try:
         while True:
-            # Mantener la conexión viva
             data = await websocket.receive_text()
     except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)
+        await ws_manager.disconnect(websocket)
+
+
+@router.websocket("/ws/telemetry")
+async def websocket_telemetry(
+    websocket: WebSocket,
+    adapter: SpectroradiometerPort = Depends(get_hardware_adapter),
+):
+    """
+    Canal de Telemetría SCADA en Tiempo Real.
+
+    Empuja el estado operativo de MS-711 y MS-713 (temperaturas Peltier,
+    voltajes de alimentación, estado de conexión) a una frecuencia de ~1 Hz.
+
+    Este canal opera independientemente de las mediciones espectrales:
+    la telemetría fluye incluso cuando no se están tomando espectros.
+
+    Protocolo de cierre:
+        - 1011 (Internal Error): Error de hardware irrecuperable.
+        - 1013 (Try Again Later): Timeout de comunicación temporal.
+    """
+    await websocket.accept()
+    logger.info("Cliente conectado al canal de telemetría SCADA")
+
+    try:
+        while True:
+            try:
+                # Leer telemetría de ambos instrumentos en paralelo
+                ms711_status, ms713_status = await asyncio.gather(
+                    adapter.read_instrument_status("MS-711"),
+                    adapter.read_instrument_status("MS-713"),
+                    return_exceptions=True,
+                )
+
+                # Construir payload de telemetría
+                payload = {
+                    "type": "telemetry",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "instruments": {
+                        "ms711": ms711_status if isinstance(ms711_status, dict) else {
+                            "error": str(ms711_status), "connection": "Error"
+                        },
+                        "ms713": ms713_status if isinstance(ms713_status, dict) else {
+                            "error": str(ms713_status), "connection": "Error"
+                        },
+                    },
+                }
+
+                await websocket.send_json(payload)
+
+            except HardwareConnectionError as e:
+                # Error irrecuperable: cerrar con código 1011
+                await websocket.send_json({
+                    "type": "scada_error",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "data": e.to_dict(),
+                })
+                await websocket.close(code=1011, reason=e.detail)
+                return
+
+            except HardwareTimeoutError as e:
+                # Error temporal: cerrar con código 1013
+                await websocket.send_json({
+                    "type": "scada_error",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "data": e.to_dict(),
+                })
+                await websocket.close(code=1013, reason=e.detail)
+                return
+
+            # Frecuencia de telemetría: 1 Hz
+            await asyncio.sleep(1.0)
+
+    except WebSocketDisconnect:
+        logger.info("Cliente desconectado del canal de telemetría")
+    except Exception as e:
+        logger.error(f"Error inesperado en telemetría: {e}")
+        try:
+            await websocket.close(code=1011, reason="Error interno del servidor")
+        except Exception:
+            pass
 
 @router.get("/scheduler/status", tags=["Scheduler"])
 def get_scheduler_status():
@@ -62,24 +152,23 @@ async def get_health_diagnostics(
     adapter: SpectroradiometerPort = Depends(get_hardware_adapter)
 ):
     """
-    Obtiene la telemetría y salud actual de los instrumentos físicos (temperaturas, voltajes, etc.).
+    Obtiene la telemetría y salud actual de los instrumentos físicos.
+    Delegada al puerto de hardware real/simulado (Liskov Substitution).
     """
-    # Para la simulación, generamos valores realistas pero ligeramente fluctuantes.
-    # En la integración final, esto llamará a los comandos específicos del hardware.
-    import random
-    return {
-        "status": "OK",
-        "ms711": {
-            "sensor_temp_c": round(24.5 + random.uniform(-0.5, 0.5), 2),
-            "supply_voltage_v": round(12.0 + random.uniform(-0.1, 0.1), 2),
-            "connection": "Stable"
-        },
-        "ms713": {
-            "peltier_temp_c": round(-5.0 + random.uniform(-0.2, 0.2), 2), # El manual dice que debe mantenerse en -5C
-            "supply_voltage_v": round(5.0 + random.uniform(-0.05, 0.05), 2),
-            "connection": "Stable"
+    try:
+        ms711_status = await adapter.read_instrument_status("MS-711")
+        ms713_status = await adapter.read_instrument_status("MS-713")
+        return {
+            "status": "OK",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "ms711": ms711_status,
+            "ms713": ms713_status,
         }
-    }
+    except HardwareConnectionError as e:
+        raise HTTPException(status_code=503, detail=e.to_dict())
+    except Exception as e:
+        logger.error(f"Error obteniendo diagnósticos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/analyze", response_model=AnalysisResult, tags=["Análisis"])
 async def analyze_spectra(
@@ -88,80 +177,156 @@ async def analyze_spectra(
     db: Session = Depends(get_db)
 ):
     """
-    Configura de forma atómica y adquiere los datos de los sensores solicitados.
+    Orquestación Asíncrona de Medición SCADA.
+
+    Pipeline atómico:
+        1. Configurar obturador (MS-711: 10-5000ms, MS-713: 1-30ms).
+        2. Adquirir espectros crudos vía RS-232C (I/O asíncrono).
+        3. Fusión espectral 300-2500nm e interpolación a 1nm.
+        4. Cálculos radiométricos vectorizados (PAR, PPFD, Iluminancia).
+        5. Inversión atmosférica (AOD Bouguer-Lambert-Beer + CSR, PWV Ingold).
+        6. Persistencia en SQLite y broadcast WebSocket.
+
+    Gestión de errores SCADA:
+        - 503: Hardware desconectado o no responde.
+        - 504: Timeout del obturador.
+        - 422: Error de procesamiento espectral (broadcasting, calibración).
+        - 500: Error inesperado (traza sanitizada).
     """
-    # 1. Configurar ambos equipos
-    if request.sensor_target in ["MS-711", "Merge"]:
-        await adapter.configure_sensor(SpectrometerConfig(sensor_id="MS-711", exposure_time_ms=request.exposure_time_ms))
-    if request.sensor_target in ["MS-713", "Merge"]:
-        await adapter.configure_sensor(SpectrometerConfig(sensor_id="MS-713", exposure_time_ms=request.exposure_time_ms))
+    try:
+        # ── 1. CONFIGURACIÓN DEL HARDWARE (I/O asíncrono) ──────────
+        if request.sensor_target in ["MS-711", "Merge"]:
+            await adapter.configure_sensor(
+                SpectrometerConfig(sensor_id="MS-711", exposure_time_ms=request.exposure_time_ms)
+            )
+        if request.sensor_target in ["MS-713", "Merge"]:
+            await adapter.configure_sensor(
+                SpectrometerConfig(sensor_id="MS-713", exposure_time_ms=request.exposure_time_ms)
+            )
 
-    # 2. Adquirir y procesar datos crudos
-    if request.sensor_target == "MS-711":
-        data = await adapter.read_spectrum("MS-711")
-        interpolated = data
-    elif request.sensor_target == "MS-713":
-        data = await adapter.read_spectrum("MS-713")
-        interpolated = data
-    else:
-        ms711_data = await adapter.read_spectrum("MS-711")
-        ms713_data = await adapter.read_spectrum("MS-713")
-        interpolated = SpectralProcessorUseCase.merge_and_interpolate(ms711_data, ms713_data)
+        # ── 2. ADQUISICIÓN DE ESPECTROS CRUDOS ─────────────────────
+        if request.sensor_target == "MS-711":
+            data = await adapter.read_spectrum("MS-711")
+            interpolated = data
+        elif request.sensor_target == "MS-713":
+            data = await adapter.read_spectrum("MS-713")
+            interpolated = data
+        else:
+            # Lectura sincronizada de ambos sensores
+            ms711_data, ms713_data = await asyncio.gather(
+                adapter.read_spectrum("MS-711"),
+                adapter.read_spectrum("MS-713"),
+            )
+            interpolated = SpectralProcessorUseCase.merge_and_interpolate(
+                ms711_data, ms713_data
+            )
 
-    # 3. Cálculos radiométricos deterministas
-    par = SpectralProcessorUseCase.calculate_par(interpolated)
-    ppfd = SpectralProcessorUseCase.calculate_ppfd(interpolated)
-    illuminance = SpectralProcessorUseCase.calculate_illuminance(interpolated)
-    total_irradiance = SpectralProcessorUseCase.calculate_total_irradiance(interpolated)
+        # ── 3. CÁLCULOS RADIOMÉTRICOS (CPU-bound vectorizado) ──────
+        par = SpectralProcessorUseCase.calculate_par(interpolated)
+        ppfd = SpectralProcessorUseCase.calculate_ppfd(interpolated)
+        illuminance = SpectralProcessorUseCase.calculate_illuminance(interpolated)
+        total_irradiance = SpectralProcessorUseCase.calculate_total_irradiance(interpolated)
 
-    # 4. Geometría Solar y cálculos atmosféricos (PWV, AOD)
-    solar = SolarGeometry()
-    solar_pos = solar.get_solar_position()
-    air_mass = solar_pos.get('air_mass')
+        # ── 4. GEOMETRÍA SOLAR + INVERSIÓN ATMOSFÉRICA ─────────────
+        solar = SolarGeometry()
+        solar_pos = solar.get_solar_position()
+        air_mass = solar_pos.get('air_mass')
 
-    pwv = SpectralProcessorUseCase.calculate_pwv(interpolated, air_mass, band='940nm')
-    aod = SpectralProcessorUseCase.calculate_aod(
-        interpolated, air_mass, pressure_hpa=solar.pressure_hpa
-    )
+        pwv = SpectralProcessorUseCase.calculate_pwv(
+            interpolated, air_mass, band='940nm'
+        )
+        aod = SpectralProcessorUseCase.calculate_aod(
+            interpolated, air_mass,
+            pressure_hpa=solar.pressure_hpa,
+            cr_factor=0.02,  # Corrección CSR para FOV 5° de los EKO
+        )
 
-    result = AnalysisResult(
-        merged_spectrum=interpolated,
-        par=par,
-        ppfd=ppfd,
-        illuminance=illuminance,
-        total_irradiance=total_irradiance,
-        applied_exposure_ms=getattr(adapter, "exposure_time_ms", request.exposure_time_ms),
-        pwv_cm=pwv,
-        aod_bands=aod,
-        solar_geometry=solar_pos,
-    )
+        # ── 5. ENSAMBLAJE DEL RESULTADO ────────────────────────────
+        result = AnalysisResult(
+            merged_spectrum=interpolated,
+            par=par,
+            ppfd=ppfd,
+            illuminance=illuminance,
+            total_irradiance=total_irradiance,
+            applied_exposure_ms=getattr(adapter, "exposure_time_ms", request.exposure_time_ms),
+            pwv_cm=pwv,
+            aod_bands=aod,
+            solar_geometry=solar_pos,
+        )
 
-    # 4. Guardar en Base de Datos (Datalogger)
-    record = MeasurementRecord(
-        sensor_target=request.sensor_target,
-        exposure_time_ms=request.exposure_time_ms,
-        par=par,
-        ppfd=ppfd,
-        illuminance=illuminance,
-        total_irradiance=total_irradiance
-    )
-    record.set_spectrum(interpolated.model_dump())
-    
-    db.add(record)
-    db.commit()
-    db.refresh(record)
+        # ── 6. PERSISTENCIA + BROADCAST ────────────────────────────
+        record = MeasurementRecord(
+            sensor_target=request.sensor_target,
+            exposure_time_ms=request.exposure_time_ms,
+            par=par,
+            ppfd=ppfd,
+            illuminance=illuminance,
+            total_irradiance=total_irradiance
+        )
+        record.set_spectrum(interpolated.model_dump())
 
-    # Emitir evento WebSocket para notificar a los clientes
-    import asyncio
-    asyncio.create_task(ws_manager.broadcast({
-        "event": "NEW_MEASUREMENT",
-        "data": {
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+
+        # Broadcast asíncrono al frontend (no bloqueante)
+        asyncio.create_task(ws_manager.broadcast_measurement({
             "id": record.id,
-            "timestamp": record.timestamp.isoformat()
-        }
-    }))
+            "timestamp": record.timestamp.isoformat(),
+            "par": par,
+            "ppfd": ppfd,
+            "illuminance": illuminance,
+            "total_irradiance": total_irradiance,
+            "pwv_cm": pwv,
+            "aod_bands": aod,
+            "solar_geometry": solar_pos,
+        }))
 
-    return result
+        return result
+
+    # ── GESTIÓN DE ERRORES SCADA ───────────────────────────────────
+    except HardwareConnectionError as e:
+        logger.error(f"SCADA: Hardware desconectado — {e.to_dict()}")
+        asyncio.create_task(ws_manager.broadcast_error(
+            "HardwareConnectionError", e.detail, e.sensor_id
+        ))
+        raise HTTPException(status_code=503, detail=e.to_dict())
+
+    except HardwareTimeoutError as e:
+        logger.error(f"SCADA: Timeout de obturador — {e.to_dict()}")
+        asyncio.create_task(ws_manager.broadcast_error(
+            "HardwareTimeoutError", e.detail, e.sensor_id
+        ))
+        raise HTTPException(status_code=504, detail=e.to_dict())
+
+    except (ValueError, IndexError, TypeError) as e:
+        # Errores de NumPy broadcasting, dimensiones incompatibles, etc.
+        error = SpectralProcessingError(
+            operation="analyze_spectra",
+            detail=str(e)
+        )
+        logger.error(f"SCADA: Error de procesamiento — {error.to_dict()}")
+        asyncio.create_task(ws_manager.broadcast_error(
+            "SpectralProcessingError", str(e)
+        ))
+        raise HTTPException(status_code=422, detail=error.to_dict())
+
+    except SCADABaseError as e:
+        logger.error(f"SCADA: Error de dominio — {e.to_dict()}")
+        raise HTTPException(status_code=503, detail=e.to_dict())
+
+    except Exception as e:
+        logger.critical(f"SCADA: Error inesperado en pipeline — {type(e).__name__}: {e}")
+        asyncio.create_task(ws_manager.broadcast_error(
+            "InternalError", "Error inesperado en el pipeline de medición"
+        ))
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_type": "InternalError",
+                "detail": "Error inesperado en el pipeline de medición. Revise los logs del servidor.",
+            }
+        )
 
 @router.get("/history/list", tags=["Datalogger"])
 def get_history(limit: int = 500, db: Session = Depends(get_db)):
