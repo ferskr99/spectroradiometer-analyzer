@@ -54,7 +54,7 @@ const LoadingOverlay: React.FC = () => (
   </div>
 );
 
-const EmptyState: React.FC<{ height: number }> = ({ height }) => (
+const EmptyState: React.FC<{ height?: number | string }> = ({ height = 300 }) => (
   <div style={{ ...styles.emptyState, height }}>
     <Activity size={32} color="#333333" />
     <p style={styles.emptyTitle}>Sin datos espectrales</p>
@@ -307,9 +307,7 @@ const styles: Record<string, React.CSSProperties> = {
   chartWrapper: {
     flex: 1,
     minHeight: 0,
-    position: "relative",
-    width: "100%",
-    position: "relative",
+    position: "relative" as const,
     width: "100%",
   },
   loadingOverlay: {
