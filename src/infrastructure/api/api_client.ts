@@ -13,13 +13,14 @@ import type { components } from "./api-types";
 
 export type SensorId = "MS-711" | "MS-713";
 export type SpectralData = components["schemas"]["SpectralData"];
-export type AnalysisResult = components["schemas"]["AnalysisResult"];
+export type AnalysisResult = components["schemas"]["AnalysisResult"] & { applied_exposure_ms?: number | null };
 export type HTTPValidationError = components["schemas"]["HTTPValidationError"];
 
 export interface AnalysisRequest {
   sensor_target: "MS-711" | "MS-713" | "Merge" | string;
   exposure_time_ms: number;
   auto_exposure?: boolean;
+  measurement_mode?: string;
 }
 
 export interface SchedulerConfig {
@@ -42,10 +43,15 @@ export interface MeasurementRecord {
   timestamp: string;
   sensor_target: string;
   exposure_time_ms: number;
+  measurement_mode?: string;
   par: number;
   ppfd: number;
   illuminance: number;
   total_irradiance: number;
+  pwv_cm?: number | null;
+  aod_nm500?: number | null;
+  sza?: number | null;
+  air_mass?: number | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────

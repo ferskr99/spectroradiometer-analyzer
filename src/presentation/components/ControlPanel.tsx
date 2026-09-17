@@ -51,6 +51,8 @@ export interface ControlPanelProps {
   onSensorTargetChange: (sensor: "MS-711" | "MS-713" | "Merge") => void;
   exposureTime: number;
   onExposureTimeChange: (time: number) => void;
+  autoExposure: boolean;
+  onAutoExposureChange: (auto: boolean) => void;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -62,6 +64,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onSensorTargetChange,
   exposureTime,
   onExposureTimeChange,
+  autoExposure,
+  onAutoExposureChange,
 }) => {
 
   const handleExposureInput = useCallback(
@@ -86,8 +90,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     onAnalyze({
       sensor_target: sensorTarget,
       exposure_time_ms: exposureTime,
+      auto_exposure: autoExposure,
     });
-  }, [sensorTarget, exposureTime, onAnalyze]);
+  }, [sensorTarget, exposureTime, autoExposure, onAnalyze]);
 
   return (
     <div style={styles.container}>
@@ -132,21 +137,31 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <div style={styles.section}>
           <div style={styles.exposureHeader}>
             <label style={styles.label}>Tiempo de Exposición</label>
-            <div style={styles.exposureInputWrapper}>
-              <input
-                type="number"
-                value={exposureTime}
-                onChange={handleExposureInput}
-                min={EXPOSURE_MIN}
-                max={EXPOSURE_MAX}
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "#eab308" }}>
+              <input 
+                type="checkbox" 
+                checked={autoExposure} 
+                onChange={(e) => onAutoExposureChange(e.target.checked)} 
                 disabled={isPending}
-                style={{
-                  ...styles.exposureInput,
-                  ...(isPending ? styles.disabled : {}),
-                }}
               />
-              <span style={styles.exposureUnit}>ms</span>
-            </div>
+              Auto-Exposición
+            </label>
+          </div>
+          
+          <div style={{...styles.exposureInputWrapper, opacity: autoExposure ? 0.5 : 1}}>
+            <input
+              type="number"
+              value={autoExposure ? "Auto" : exposureTime}
+              onChange={handleExposureInput}
+              min={EXPOSURE_MIN}
+              max={EXPOSURE_MAX}
+              disabled={isPending || autoExposure}
+              style={{
+                ...styles.exposureInput,
+                ...(isPending || autoExposure ? styles.disabled : {}),
+              }}
+            />
+            <span style={styles.exposureUnit}>ms</span>
           </div>
 
           <input
@@ -156,9 +171,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             step={10}
             value={exposureTime}
             onChange={(e) => onExposureTimeChange(Number(e.target.value))}
-            disabled={isPending}
+            disabled={isPending || autoExposure}
             style={{
               ...styles.slider,
+              opacity: autoExposure ? 0.5 : 1,
               background: `linear-gradient(to right, #0078d4 ${
                 ((exposureTime - EXPOSURE_MIN) / (EXPOSURE_MAX - EXPOSURE_MIN)) * 100
               }%, #333333 ${
@@ -167,16 +183,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             }}
           />
 
-          <div style={styles.presets}>
+          <div style={{...styles.presets, opacity: autoExposure ? 0.5 : 1}}>
             {EXPOSURE_PRESETS.map((preset) => (
               <button
                 key={preset}
                 onClick={() => onExposureTimeChange(preset)}
-                disabled={isPending}
+                disabled={isPending || autoExposure}
                 style={{
                   ...styles.presetButton,
-                  ...(exposureTime === preset ? styles.presetButtonActive : {}),
-                  ...(isPending ? styles.disabled : {}),
+                  ...(exposureTime === preset && !autoExposure ? styles.presetButtonActive : {}),
+                  ...(isPending || autoExposure ? styles.disabled : {}),
                 }}
               >
                 {preset >= 1000 ? `${preset / 1000}s` : `${preset}ms`}

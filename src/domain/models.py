@@ -28,6 +28,9 @@ class AnalysisRequest(BaseModel):
     auto_exposure: bool = Field(
         default=False, description="Simular cálculo de exposición automática."
     )
+    measurement_mode: str = Field(
+        default="Manual", description="Origen de la medición (ej. Manual, Continua (Programada))."
+    )
 
 class AnalysisResult(BaseModel):
     """Resultado del análisis espectral combinado MS-711 + MS-713."""

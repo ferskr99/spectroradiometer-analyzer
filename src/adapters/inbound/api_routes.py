@@ -197,11 +197,11 @@ async def analyze_spectra(
         # ── 1. CONFIGURACIÓN DEL HARDWARE (I/O asíncrono) ──────────
         if request.sensor_target in ["MS-711", "Merge"]:
             await adapter.configure_sensor(
-                SpectrometerConfig(sensor_id="MS-711", exposure_time_ms=request.exposure_time_ms)
+                SpectrometerConfig(sensor_id="MS-711", exposure_time_ms=request.exposure_time_ms, auto_exposure=request.auto_exposure)
             )
         if request.sensor_target in ["MS-713", "Merge"]:
             await adapter.configure_sensor(
-                SpectrometerConfig(sensor_id="MS-713", exposure_time_ms=request.exposure_time_ms)
+                SpectrometerConfig(sensor_id="MS-713", exposure_time_ms=request.exposure_time_ms, auto_exposure=request.auto_exposure)
             )
 
         # ── 2. ADQUISICIÓN DE ESPECTROS CRUDOS ─────────────────────
@@ -258,10 +258,15 @@ async def analyze_spectra(
         record = MeasurementRecord(
             sensor_target=request.sensor_target,
             exposure_time_ms=request.exposure_time_ms,
+            measurement_mode=request.measurement_mode,
             par=par,
             ppfd=ppfd,
             illuminance=illuminance,
-            total_irradiance=total_irradiance
+            total_irradiance=total_irradiance,
+            pwv_cm=pwv,
+            aod_nm500=aod.get('500nm', 0.0) if aod else None,
+            sza=solar_pos.get('zenith'),
+            air_mass=air_mass
         )
         record.set_spectrum(interpolated.model_dump())
 
@@ -273,6 +278,7 @@ async def analyze_spectra(
         asyncio.create_task(ws_manager.broadcast_measurement({
             "id": record.id,
             "timestamp": record.timestamp.isoformat(),
+            "measurement_mode": record.measurement_mode,
             "par": par,
             "ppfd": ppfd,
             "illuminance": illuminance,
@@ -340,10 +346,15 @@ def get_history(limit: int = 500, db: Session = Depends(get_db)):
         "timestamp": r.timestamp.isoformat(),
         "sensor_target": r.sensor_target,
         "exposure_time_ms": r.exposure_time_ms,
+        "measurement_mode": r.measurement_mode,
         "par": r.par,
         "ppfd": r.ppfd,
         "illuminance": r.illuminance,
-        "total_irradiance": r.total_irradiance
+        "total_irradiance": r.total_irradiance,
+        "pwv_cm": r.pwv_cm,
+        "aod_nm500": r.aod_nm500,
+        "sza": r.sza,
+        "air_mass": r.air_mass
     } for r in records]
 
 @router.get("/history/batch", tags=["Datalogger"])
@@ -366,7 +377,10 @@ def get_history_batch(ids: str, db: Session = Depends(get_db)):
             par=record.par,
             ppfd=record.ppfd,
             illuminance=record.illuminance,
-            total_irradiance=record.total_irradiance
+            total_irradiance=record.total_irradiance,
+            pwv_cm=record.pwv_cm,
+            aod_bands={"500nm": record.aod_nm500} if record.aod_nm500 else None,
+            solar_geometry={"zenith": record.sza, "air_mass": record.air_mass} if record.sza else None
         )
     return results
 
@@ -382,7 +396,10 @@ def get_history_detail(record_id: int, db: Session = Depends(get_db)):
         par=record.par,
         ppfd=record.ppfd,
         illuminance=record.illuminance,
-        total_irradiance=record.total_irradiance
+        total_irradiance=record.total_irradiance,
+        pwv_cm=record.pwv_cm,
+        aod_bands={"500nm": record.aod_nm500} if record.aod_nm500 else None,
+        solar_geometry={"zenith": record.sza, "air_mass": record.air_mass} if record.sza else None
     )
 
 @router.get("/history/export/csv", tags=["Datalogger"])
@@ -395,17 +412,22 @@ def export_history_csv(db: Session = Depends(get_db)):
         MeasurementRecord.timestamp,
         MeasurementRecord.sensor_target,
         MeasurementRecord.exposure_time_ms,
+        MeasurementRecord.measurement_mode,
         MeasurementRecord.par,
         MeasurementRecord.ppfd,
         MeasurementRecord.illuminance,
-        MeasurementRecord.total_irradiance
+        MeasurementRecord.total_irradiance,
+        MeasurementRecord.pwv_cm,
+        MeasurementRecord.aod_nm500,
+        MeasurementRecord.sza,
+        MeasurementRecord.air_mass
     ).order_by(MeasurementRecord.timestamp.asc())
 
     def iter_csv():
         # Escribimos las cabeceras
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["ID", "Fecha/Hora (UTC)", "Sensor", "Exposicion (ms)", "PAR (W/m2)", "PPFD (umol/m2/s)", "Iluminancia (lx)", "Irradiancia Total (W/m2)"])
+        writer.writerow(["ID", "Fecha/Hora (UTC)", "Sensor", "Exposicion (ms)", "Origen", "RFA (W/m2)", "DFFF (umol/m2/s)", "Iluminancia (lx)", "Irradiancia Total (W/m2)", "AP (cm)", "EOA (500nm)", "ACS (deg)", "Masa de Aire"])
         yield output.getvalue()
         output.truncate(0)
         output.seek(0)
@@ -417,10 +439,15 @@ def export_history_csv(db: Session = Depends(get_db)):
                 r.timestamp.isoformat(),
                 r.sensor_target,
                 r.exposure_time_ms,
-                f"{r.par:.4f}",
-                f"{r.ppfd:.4f}",
-                f"{r.illuminance:.2f}",
-                f"{r.total_irradiance:.4f}"
+                r.measurement_mode,
+                f"{r.par:.4f}" if r.par else "N/A",
+                f"{r.ppfd:.4f}" if r.ppfd else "N/A",
+                f"{r.illuminance:.2f}" if r.illuminance else "N/A",
+                f"{r.total_irradiance:.4f}" if r.total_irradiance else "N/A",
+                f"{r.pwv_cm:.4f}" if r.pwv_cm else "N/A",
+                f"{r.aod_nm500:.4f}" if r.aod_nm500 else "N/A",
+                f"{r.sza:.2f}" if r.sza else "N/A",
+                f"{r.air_mass:.2f}" if r.air_mass else "N/A"
             ])
             yield output.getvalue()
             output.truncate(0)
@@ -445,16 +472,21 @@ def export_history_batch_csv(ids: str, db: Session = Depends(get_db)):
         MeasurementRecord.timestamp,
         MeasurementRecord.sensor_target,
         MeasurementRecord.exposure_time_ms,
+        MeasurementRecord.measurement_mode,
         MeasurementRecord.par,
         MeasurementRecord.ppfd,
         MeasurementRecord.illuminance,
-        MeasurementRecord.total_irradiance
+        MeasurementRecord.total_irradiance,
+        MeasurementRecord.pwv_cm,
+        MeasurementRecord.aod_nm500,
+        MeasurementRecord.sza,
+        MeasurementRecord.air_mass
     ).filter(MeasurementRecord.id.in_(id_list)).order_by(MeasurementRecord.timestamp.asc())
 
     def iter_csv():
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["ID", "Fecha/Hora (UTC)", "Sensor", "Exposicion (ms)", "PAR (W/m2)", "PPFD (umol/m2/s)", "Iluminancia (lx)", "Irradiancia Total (W/m2)"])
+        writer.writerow(["ID", "Fecha/Hora (UTC)", "Sensor", "Exposicion (ms)", "Origen", "RFA (W/m2)", "DFFF (umol/m2/s)", "Iluminancia (lx)", "Irradiancia Total (W/m2)", "AP (cm)", "EOA (500nm)", "ACS (deg)", "Masa de Aire"])
         yield output.getvalue()
         output.truncate(0)
         output.seek(0)
@@ -465,10 +497,15 @@ def export_history_batch_csv(ids: str, db: Session = Depends(get_db)):
                 r.timestamp.isoformat(),
                 r.sensor_target,
                 r.exposure_time_ms,
-                f"{r.par:.4f}",
-                f"{r.ppfd:.4f}",
-                f"{r.illuminance:.2f}",
-                f"{r.total_irradiance:.4f}"
+                r.measurement_mode,
+                f"{r.par:.4f}" if r.par else "N/A",
+                f"{r.ppfd:.4f}" if r.ppfd else "N/A",
+                f"{r.illuminance:.2f}" if r.illuminance else "N/A",
+                f"{r.total_irradiance:.4f}" if r.total_irradiance else "N/A",
+                f"{r.pwv_cm:.4f}" if r.pwv_cm else "N/A",
+                f"{r.aod_nm500:.4f}" if r.aod_nm500 else "N/A",
+                f"{r.sza:.2f}" if r.sza else "N/A",
+                f"{r.air_mass:.2f}" if r.air_mass else "N/A"
             ])
             yield output.getvalue()
             output.truncate(0)
@@ -610,25 +647,29 @@ def generate_report(
     pdf.cell(0, 12, "Resumen de Mediciones", ln=True)
     pdf.ln(5)
 
-    # Cabeceras
-    pdf.set_font("Helvetica", "B", 9)
-    col_widths = [15, 45, 25, 20, 25, 25, 35]
-    headers = ["ID", "Fecha/Hora", "Sensor", "Exp(ms)", "PAR(W/m²)", "PPFD", "Irr.Total(W/m²)"]
+    pdf.set_font("Helvetica", "B", 7)
+    col_widths = [10, 30, 15, 12, 18, 18, 18, 18, 12, 12, 12, 12]
+    headers = ["ID", "Fecha/Hora", "Sensor", "Exp(ms)", "RFA(W/m²)", "DFFF", "Ilumin(lx)", "Irr.Tot", "AP(cm)", "EOA", "ACS(°)", "MA"]
     for i, h in enumerate(headers):
         pdf.cell(col_widths[i], 8, h, border=1, align="C")
     pdf.ln()
 
     # Filas
-    pdf.set_font("Helvetica", "", 8)
+    pdf.set_font("Helvetica", "", 7)
     for r in records:
         pdf.cell(col_widths[0], 7, str(r.id), border=1, align="C")
         ts = r.timestamp.strftime("%Y-%m-%d %H:%M") if r.timestamp else "N/A"
         pdf.cell(col_widths[1], 7, ts, border=1, align="C")
         pdf.cell(col_widths[2], 7, str(r.sensor_target), border=1, align="C")
         pdf.cell(col_widths[3], 7, str(r.exposure_time_ms), border=1, align="C")
-        pdf.cell(col_widths[4], 7, f"{r.par:.4f}", border=1, align="C")
-        pdf.cell(col_widths[5], 7, f"{r.ppfd:.4f}", border=1, align="C")
-        pdf.cell(col_widths[6], 7, f"{r.total_irradiance:.4f}", border=1, align="C")
+        pdf.cell(col_widths[4], 7, f"{r.par:.4f}" if r.par else "N/A", border=1, align="C")
+        pdf.cell(col_widths[5], 7, f"{r.ppfd:.4f}" if r.ppfd else "N/A", border=1, align="C")
+        pdf.cell(col_widths[6], 7, f"{r.illuminance:.2f}" if r.illuminance else "N/A", border=1, align="C")
+        pdf.cell(col_widths[7], 7, f"{r.total_irradiance:.4f}" if r.total_irradiance else "N/A", border=1, align="C")
+        pdf.cell(col_widths[8], 7, f"{r.pwv_cm:.4f}" if r.pwv_cm else "N/A", border=1, align="C")
+        pdf.cell(col_widths[9], 7, f"{r.aod_nm500:.4f}" if r.aod_nm500 else "N/A", border=1, align="C")
+        pdf.cell(col_widths[10], 7, f"{r.sza:.2f}" if r.sza else "N/A", border=1, align="C")
+        pdf.cell(col_widths[11], 7, f"{r.air_mass:.2f}" if r.air_mass else "N/A", border=1, align="C")
         pdf.ln()
 
     # ── Detalle por medición ──
@@ -650,10 +691,17 @@ def generate_report(
         pdf.set_font("Helvetica", "B", 12)
         pdf.cell(0, 8, "Resultados Radiométricos", ln=True)
         pdf.set_font("Helvetica", "", 11)
-        pdf.cell(0, 7, f"  PAR: {r.par:.4f} W/m²", ln=True)
-        pdf.cell(0, 7, f"  PPFD: {r.ppfd:.4f} µmol/m²/s", ln=True)
-        pdf.cell(0, 7, f"  Iluminancia: {r.illuminance:.2f} lux", ln=True)
-        pdf.cell(0, 7, f"  Irradiancia Total: {r.total_irradiance:.4f} W/m²", ln=True)
+        pdf.cell(0, 7, f"  RFA (Radiación Fotosintéticamente Activa): {r.par:.4f} W/m²" if r.par else "  RFA: N/A", ln=True)
+        pdf.cell(0, 7, f"  DFFF (Densidad de Flujo de Fotones Fotosintéticos): {r.ppfd:.4f} µmol/m²/s" if r.ppfd else "  DFFF: N/A", ln=True)
+        pdf.cell(0, 7, f"  Iluminancia Fotópica: {r.illuminance:.2f} lux" if r.illuminance else "  Iluminancia: N/A", ln=True)
+        pdf.cell(0, 7, f"  Irradiancia Total: {r.total_irradiance:.4f} W/m²" if r.total_irradiance else "  Irradiancia Total: N/A", ln=True)
+        pdf.ln(3)
+        pdf.cell(0, 8, "Atmósfera y Geometría Solar", ln=True)
+        pdf.set_font("Helvetica", "", 11)
+        pdf.cell(0, 7, f"  AP (Agua Precipitable): {r.pwv_cm:.4f} cm" if r.pwv_cm else "  AP: N/A", ln=True)
+        pdf.cell(0, 7, f"  EOA (Espesor Óptico de Aerosoles a 500nm): {r.aod_nm500:.4f}" if r.aod_nm500 else "  EOA: N/A", ln=True)
+        pdf.cell(0, 7, f"  ACS (Ángulo Cenital Solar): {r.sza:.2f}°" if r.sza else "  ACS: N/A", ln=True)
+        pdf.cell(0, 7, f"  MA (Masa de Aire): {r.air_mass:.2f}" if r.air_mass else "  MA: N/A", ln=True)
         pdf.ln(5)
 
         # Generar gráfica espectral

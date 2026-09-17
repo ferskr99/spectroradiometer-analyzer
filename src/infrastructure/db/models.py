@@ -11,12 +11,19 @@ class MeasurementRecord(Base):
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     sensor_target = Column(String, index=True)
     exposure_time_ms = Column(Integer)
+    measurement_mode = Column(String, default="Manual")
     
     # Métricas físicas
     par = Column(Float)
     ppfd = Column(Float)
     illuminance = Column(Float)
     total_irradiance = Column(Float)
+    
+    # Parámetros atmosféricos
+    pwv_cm = Column(Float, nullable=True)
+    aod_nm500 = Column(Float, nullable=True)
+    sza = Column(Float, nullable=True)
+    air_mass = Column(Float, nullable=True)
     
     # Espectro completo (Guardado como JSON string)
     spectrum_json = Column(Text)

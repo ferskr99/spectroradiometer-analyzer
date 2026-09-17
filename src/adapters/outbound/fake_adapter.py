@@ -34,13 +34,43 @@ class FakeSpectroradiometerAdapter(SpectroradiometerPort):
         self.connected = True
         return True
 
+    async def _calculate_optimal_exposure(self, sensor_id: str) -> int:
+        """
+        Algoritmo de auto-exposición dinámica:
+        1. Disparo de prueba a 10ms
+        2. Evalúa pico máximo
+        3. Calcula tiempo óptimo buscando 80% de saturación
+        4. Acota entre 10ms y 5000ms
+        """
+        TEST_EXPOSURE = 10
+        await asyncio.sleep(TEST_EXPOSURE / 1000.0)
+        
+        # Obtenemos el espectro de prueba
+        test_data = await self.read_spectrum(sensor_id)
+        peak_signal = max(test_data.irradiance)
+        
+        if peak_signal <= 0:
+            return 5000
+
+        # Límite de saturación teórico del sensor
+        MAX_SATURATION = 2000.0
+        TARGET_SIGNAL = MAX_SATURATION * 0.80  # Apuntamos al 80%
+        
+        # Regla de tres simple asumiendo linealidad del ADC
+        optimal = int(TEST_EXPOSURE * (TARGET_SIGNAL / peak_signal))
+        
+        return max(10, min(5000, optimal))
+
     async def configure_sensor(self, config: SpectrometerConfig) -> bool:
         if getattr(config, 'auto_exposure', False):
-            # Simular cálculo dinámico (un barrido de 10ms + tiempo óptimo)
-            ideal_exposure = random.randint(15, 300)
-            self.exposure_time_ms = ideal_exposure
-            # Emular el tiempo físico real del cálculo + toma
-            await asyncio.sleep((10 + self.exposure_time_ms) / 1000.0)
+            # Algoritmo de Auto-Exposición
+            target = getattr(config, 'sensor_target', 'MS-711')
+            if target == "Merge":
+                target = "MS-711"  # Usamos el 711 de referencia
+                
+            optimal = await self._calculate_optimal_exposure(target)
+            self.exposure_time_ms = optimal
+            await asyncio.sleep(self.exposure_time_ms / 1000.0)
         else:
             if config.exposure_time_ms < 10 or config.exposure_time_ms > 5000:
                 raise ValueError("El tiempo de exposición debe estar entre 10 y 5000 milisegundos.")

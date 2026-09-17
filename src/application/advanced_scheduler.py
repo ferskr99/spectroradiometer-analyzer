@@ -78,7 +78,8 @@ class AdvancedScheduler:
                     resp = await client.post("/api/v1/sensors/analyze", json={
                         "sensor_target": cls._config.sensor_target,
                         "exposure_time_ms": cls._config.exposure_time_ms,
-                        "auto_exposure": cls._config.auto_exposure
+                        "auto_exposure": cls._config.auto_exposure,
+                        "measurement_mode": "Continua (Programada)"
                     }, timeout=60.0)
                     
                     if resp.status_code != 200:

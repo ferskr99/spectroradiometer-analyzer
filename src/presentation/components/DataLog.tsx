@@ -89,11 +89,17 @@ export const DataLog: React.FC<DataLogProps> = ({
                 {multiSelect && <th style={{...styles.th, width: 40}}></th>}
                 <th style={styles.th}>ID</th>
                 <th style={styles.th}>Fecha y Hora</th>
-                <th style={styles.th}>Modo</th>
+                <th style={styles.th}>Sensor</th>
+                <th style={styles.th}>Origen</th>
                 <th style={styles.th}>Exp (ms)</th>
-                <th style={styles.th}>PAR (W/m²)</th>
-                <th style={styles.th}>PPFD (µmol)</th>
+                <th style={styles.th}>RFA (W/m²)</th>
+                <th style={styles.th}>DFFF (µmol)</th>
+                <th style={styles.th}>Ilumin. (lx)</th>
                 <th style={styles.th}>Total (W/m²)</th>
+                <th style={styles.th}>AP (cm)</th>
+                <th style={styles.th}>EOA</th>
+                <th style={styles.th}>ACS (°)</th>
+                <th style={styles.th}>MA</th>
               </tr>
             </thead>
             <tbody>
@@ -133,10 +139,22 @@ export const DataLog: React.FC<DataLogProps> = ({
                       })}
                     </td>
                     <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.sensor_target}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>
+                      {record.measurement_mode === "Continua (Programada)" ? (
+                        <span style={styles.badgeContinua}>Continua</span>
+                      ) : (
+                        <span style={styles.badgeManual}>Manual</span>
+                      )}
+                    </td>
                     <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.exposure_time_ms}</td>
-                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.par.toFixed(3)}</td>
-                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.ppfd.toFixed(3)}</td>
-                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.total_irradiance.toFixed(3)}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.par?.toFixed(3) ?? "N/A"}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.ppfd?.toFixed(3) ?? "N/A"}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.illuminance?.toFixed(2) ?? "N/A"}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.total_irradiance?.toFixed(3) ?? "N/A"}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.pwv_cm?.toFixed(4) ?? "N/A"}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.aod_nm500?.toFixed(4) ?? "N/A"}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.sza?.toFixed(2) ?? "N/A"}</td>
+                    <td style={{...styles.td, ...(isActive ? styles.tdActive : {})}}>{record.air_mass?.toFixed(2) ?? "N/A"}</td>
                   </tr>
                 );
               })}
@@ -274,6 +292,25 @@ const styles: Record<string, React.CSSProperties> = {
     width: 16,
     height: 16,
     accentColor: "#0078d4",
+  },
+  badgeManual: {
+    backgroundColor: "#333333",
+    color: "#aaaaaa",
+    padding: "4px 8px",
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: 600,
+    textTransform: "uppercase",
+  },
+  badgeContinua: {
+    backgroundColor: "rgba(234, 179, 8, 0.15)",
+    color: "#eab308",
+    border: "1px solid rgba(234, 179, 8, 0.3)",
+    padding: "3px 7px",
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: 600,
+    textTransform: "uppercase",
   },
 };
 

@@ -17,6 +17,7 @@ import { useState } from "react";
 export const Dashboard: React.FC = () => {
   const [sensorTarget, setSensorTarget] = useState<"MS-711" | "MS-713" | "Merge">("Merge");
   const [exposureTime, setExposureTime] = useState(100);
+  const [autoExposure, setAutoExposure] = useState(false);
   const {
     analyze,
     data,
@@ -39,6 +40,8 @@ export const Dashboard: React.FC = () => {
           onSensorTargetChange={setSensorTarget}
           exposureTime={exposureTime}
           onExposureTimeChange={setExposureTime}
+          autoExposure={autoExposure}
+          onAutoExposureChange={setAutoExposure}
         />
         <ContinuousSchedulerPanel />
       </div>
@@ -67,7 +70,8 @@ export const Dashboard: React.FC = () => {
             ) : isSuccess && data ? (
               <span style={styles.statusText}>
                 <FileText size={14} />
-                Última medición: {data.merged_spectrum?.wavelengths.length ?? 0} puntos
+                Última medición: {data.merged_spectrum?.wavelengths.length ?? 0} puntos 
+                {data.applied_exposure_ms ? ` (Exp: ${data.applied_exposure_ms}ms)` : ""}
               </span>
             ) : isError ? (
               <span style={styles.statusTextError}>

@@ -12,6 +12,10 @@ interface HistoryRecord {
   ppfd: number;
   illuminance: number;
   total_irradiance: number;
+  pwv_cm?: number;
+  aod_nm500?: number;
+  sza?: number;
+  air_mass?: number;
 }
 
 export const ReportsView: React.FC = () => {
@@ -167,7 +171,14 @@ export const ReportsView: React.FC = () => {
                       <th style={styles.th}>ID</th>
                       <th style={styles.th}>Fecha (UTC)</th>
                       <th style={styles.th}>Sensor</th>
-                      <th style={styles.th}>Irradiancia</th>
+                      <th style={styles.th}>RFA</th>
+                      <th style={styles.th}>DFFF</th>
+                      <th style={styles.th}>Ilumin.</th>
+                      <th style={styles.th}>Irr. Total</th>
+                      <th style={styles.th}>AP</th>
+                      <th style={styles.th}>EOA</th>
+                      <th style={styles.th}>ACS</th>
+                      <th style={styles.th}>MA</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -194,7 +205,14 @@ export const ReportsView: React.FC = () => {
                             {new Date(r.timestamp).toLocaleDateString()} {new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </td>
                           <td style={styles.td}>{r.sensor_target}</td>
-                          <td style={styles.td}>{r.total_irradiance.toFixed(2)} W/m²</td>
+                          <td style={styles.td}>{r.par?.toFixed(3) ?? "N/A"}</td>
+                          <td style={styles.td}>{r.ppfd?.toFixed(3) ?? "N/A"}</td>
+                          <td style={styles.td}>{r.illuminance?.toFixed(1) ?? "N/A"}</td>
+                          <td style={styles.td}>{r.total_irradiance?.toFixed(3) ?? "N/A"}</td>
+                          <td style={styles.td}>{r.pwv_cm?.toFixed(3) ?? "N/A"}</td>
+                          <td style={styles.td}>{r.aod_nm500?.toFixed(3) ?? "N/A"}</td>
+                          <td style={styles.td}>{r.sza?.toFixed(2) ?? "N/A"}</td>
+                          <td style={styles.td}>{r.air_mass?.toFixed(2) ?? "N/A"}</td>
                         </tr>
                       );
                     })}

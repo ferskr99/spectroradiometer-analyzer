@@ -120,24 +120,40 @@ export const HistoryView: React.FC = () => {
                           <h4 style={{ color: '#cccccc', fontSize: 12, marginBottom: 12, borderBottom: '1px solid #333', paddingBottom: 6, fontWeight: 600, letterSpacing: "0.05em" }}>
                             DATOS REGISTRADOS — MEDICIÓN #{id}
                           </h4>
-                          <div style={styles.metricsGrid}>
-                            <div style={styles.metricBox}>
-                              <div style={styles.metricLabel}>Radiación PAR</div>
-                              <div style={styles.metricValue}>{record.par.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
+                            <div style={styles.metricsGrid}>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>RFA (PAR)</div>
+                                <div style={styles.metricValue}>{record.par?.toFixed(2) ?? "N/A"} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
+                              </div>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>DFFF (PPFD)</div>
+                                <div style={styles.metricValue}>{record.ppfd?.toFixed(2) ?? "N/A"} <span style={{fontSize: 12, color: "#888"}}>µmol</span></div>
+                              </div>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>Iluminancia</div>
+                                <div style={styles.metricValue}>{record.illuminance ? Math.round(record.illuminance) : "N/A"} <span style={{fontSize: 12, color: "#888"}}>lx</span></div>
+                              </div>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>Irradiancia (Total)</div>
+                                <div style={styles.metricValue}>{record.total_irradiance?.toFixed(2) ?? "N/A"} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
+                              </div>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>AP (PWV)</div>
+                                <div style={styles.metricValue}>{record.pwv_cm?.toFixed(3) ?? "N/A"} <span style={{fontSize: 12, color: "#888"}}>cm</span></div>
+                              </div>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>EOA (AOD)</div>
+                                <div style={styles.metricValue}>{record.aod_bands && record.aod_bands["500nm"] ? record.aod_bands["500nm"].toFixed(3) : "N/A"}</div>
+                              </div>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>ACS (SZA)</div>
+                                <div style={styles.metricValue}>{record.solar_geometry?.zenith?.toFixed(2) ?? "N/A"} <span style={{fontSize: 12, color: "#888"}}>°</span></div>
+                              </div>
+                              <div style={styles.metricBox}>
+                                <div style={styles.metricLabel}>Masa Aire (MA)</div>
+                                <div style={styles.metricValue}>{record.solar_geometry?.air_mass?.toFixed(2) ?? "N/A"}</div>
+                              </div>
                             </div>
-                            <div style={styles.metricBox}>
-                              <div style={styles.metricLabel}>Flujo Fotones (PPFD)</div>
-                              <div style={styles.metricValue}>{record.ppfd.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>µmol</span></div>
-                            </div>
-                            <div style={styles.metricBox}>
-                              <div style={styles.metricLabel}>Iluminancia</div>
-                              <div style={styles.metricValue}>{Math.round(record.illuminance)} <span style={{fontSize: 12, color: "#888"}}>lx</span></div>
-                            </div>
-                            <div style={styles.metricBox}>
-                              <div style={styles.metricLabel}>Irradiancia Total</div>
-                              <div style={styles.metricValue}>{record.total_irradiance.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
-                            </div>
-                          </div>
                         </div>
                       )
                     })}
@@ -236,7 +252,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 16,
   },
   metricsGrid: {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
     gap: 16,
   },
   metricBox: {
