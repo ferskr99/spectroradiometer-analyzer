@@ -3,13 +3,15 @@ import type { AnalysisResult } from "../../infrastructure/api";
 import { Sun, Leaf, Lightbulb, Zap, Droplets, Wind, Compass, Mountain } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────
-// Definición de métricas consolidadas (8 métricas en línea SCADA)
+// Definición de métricas con nombres completos para usuarios generales
 // ─────────────────────────────────────────────────────────────────────
 
 interface MetricDefinition {
   id: string;
   label: string;
+  fullName: string;
   unit: string;
+  unitFull: string;
   icon: React.ReactNode;
   color: string;
   getValue: (result: AnalysisResult) => number | null;
@@ -19,72 +21,88 @@ interface MetricDefinition {
 const ALL_METRICS: MetricDefinition[] = [
   {
     id: "par",
-    label: "PAR",
+    label: "RFA",
+    fullName: "Radiación Fotosintéticamente Activa",
     unit: "W/m²",
-    icon: <Sun size={12} />,
+    unitFull: "Watts por metro cuadrado",
+    icon: <Sun size={14} />,
     color: "#eab308",
     getValue: (r) => r.par,
     format: (v) => v.toFixed(4),
   },
   {
     id: "ppfd",
-    label: "PPFD",
-    unit: "µmol",
-    icon: <Leaf size={12} />,
+    label: "DFFF",
+    fullName: "Densidad de Flujo de Fotones Fotosintéticos",
+    unit: "µmol/m²/s",
+    unitFull: "Micromoles por metro cuadrado por segundo",
+    icon: <Leaf size={14} />,
     color: "#10b981",
     getValue: (r) => r.ppfd,
     format: (v) => v.toFixed(4),
   },
   {
     id: "illuminance",
-    label: "LUX",
-    unit: "lx",
-    icon: <Lightbulb size={12} />,
+    label: "Iluminancia",
+    fullName: "Iluminancia Fotópica",
+    unit: "lux",
+    unitFull: "Lúmenes por metro cuadrado",
+    icon: <Lightbulb size={14} />,
     color: "#3b82f6",
     getValue: (r) => r.illuminance,
     format: (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(1)),
   },
   {
     id: "total-irradiance",
-    label: "TOTAL",
+    label: "Irradiancia Total",
+    fullName: "Irradiancia Espectral Integrada",
     unit: "W/m²",
-    icon: <Zap size={12} />,
+    unitFull: "Watts por metro cuadrado",
+    icon: <Zap size={14} />,
     color: "#a855f7",
     getValue: (r) => r.total_irradiance,
     format: (v) => v.toFixed(4),
   },
   {
     id: "pwv",
-    label: "PWV",
+    label: "AP",
+    fullName: "Agua Precipitable (Vapor de Agua)",
     unit: "cm",
-    icon: <Droplets size={12} />,
+    unitFull: "Centímetros de agua",
+    icon: <Droplets size={14} />,
     color: "#06b6d4",
     getValue: (r) => r.pwv_cm ?? null,
     format: (v) => (v >= 0 ? v.toFixed(3) : "N/D"),
   },
   {
     id: "aod-500",
-    label: "AOD₅₀₀",
+    label: "EOA",
+    fullName: "Espesor Óptico de Aerosoles (500 nm)",
     unit: "τ",
-    icon: <Wind size={12} />,
+    unitFull: "Profundidad óptica (adimensional)",
+    icon: <Wind size={14} />,
     color: "#f97316",
     getValue: (r) => (r.aod_bands ? (r.aod_bands["500"] ?? null) : null),
     format: (v) => (v >= 0 ? v.toFixed(3) : "N/D"),
   },
   {
     id: "sza",
-    label: "SZA",
+    label: "Ángulo Cenital Solar",
+    fullName: "Ángulo Cenital Solar (SZA)",
     unit: "°",
-    icon: <Compass size={12} />,
+    unitFull: "Grados sexagesimales",
+    icon: <Compass size={14} />,
     color: "#ec4899",
     getValue: (r) => r.solar_geometry?.sza ?? null,
     format: (v) => v.toFixed(2),
   },
   {
     id: "air-mass",
-    label: "AM",
+    label: "Masa de Aire",
+    fullName: "Masa de Aire Óptica Relativa",
     unit: "AM",
-    icon: <Mountain size={12} />,
+    unitFull: "Adimensional (relativa al cénit)",
+    icon: <Mountain size={14} />,
     color: "#8b5cf6",
     getValue: (r) => r.solar_geometry?.air_mass ?? null,
     format: (v) => v.toFixed(3),
@@ -106,11 +124,14 @@ const MetricCard: React.FC<{
       ...styles.card,
       borderColor: isLoading ? "#2a2a2a" : "#333333",
     }}
+    title={`${metric.fullName}\nUnidad: ${metric.unitFull}`}
   >
     <div style={styles.cardHeader}>
       <span style={{ ...styles.cardIcon, color: metric.color }}>{metric.icon}</span>
       <span style={styles.cardLabel}>{metric.label}</span>
     </div>
+
+    <div style={styles.cardFullName}>{metric.fullName}</div>
 
     {isLoading ? (
       <div style={styles.skeletonContainer}>
@@ -170,22 +191,23 @@ const styles: Record<string, React.CSSProperties> = {
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(8, 1fr)",
-    gap: 8,
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 10,
   },
   card: {
-    backgroundColor: "#1e1e1e",
-    borderRadius: 4,
-    border: "1px solid #333333",
-    padding: "8px 12px",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 8,
+    border: "1px solid #2a2a2a",
+    padding: "12px 14px",
     display: "flex",
     flexDirection: "column",
+    gap: 4,
+    transition: "border-color 0.15s ease",
   },
   cardHeader: {
     display: "flex",
     alignItems: "center",
     gap: 6,
-    marginBottom: 4,
   },
   cardIcon: {
     display: "flex",
@@ -193,39 +215,48 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardLabel: {
     color: "#cccccc",
-    fontSize: 10,
-    fontWeight: 600,
+    fontSize: 11,
+    fontWeight: 700,
     textTransform: "uppercase" as const,
+    letterSpacing: "0.03em",
+  },
+  cardFullName: {
+    color: "#666",
+    fontSize: 10,
+    fontWeight: 400,
+    lineHeight: 1.3,
+    marginBottom: 2,
   },
   valueContainer: {
     display: "flex",
     alignItems: "baseline",
-    gap: 4,
+    gap: 5,
   },
   cardValue: {
-    fontSize: 16,
-    fontWeight: 600,
+    fontSize: 18,
+    fontWeight: 700,
     fontFamily: "'JetBrains Mono', monospace",
     lineHeight: 1,
     letterSpacing: "-0.02em",
   },
   cardUnit: {
     color: "#888888",
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: "'JetBrains Mono', monospace",
+    fontWeight: 500,
   },
   skeletonContainer: {
     display: "flex",
     flexDirection: "column",
     gap: 4,
-    height: 16,
+    height: 18,
     justifyContent: "center",
   },
   skeletonValue: {
     width: "70%",
-    height: 12,
+    height: 14,
     backgroundColor: "#333333",
-    borderRadius: 2,
+    borderRadius: 3,
   },
 };
 

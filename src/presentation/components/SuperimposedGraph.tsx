@@ -55,10 +55,10 @@ const CustomTooltip: React.FC<{
   if (!active || !payload || payload.length === 0) return null;
 
   const wavelength = Number(label);
-  let region = "NIR";
-  if (wavelength < 400) region = "UV";
-  else if (wavelength < 700) region = "VIS";
-  else if (wavelength < 780) region = "VIS/NIR";
+  let region = "IOC (Infrarrojo de Onda Corta)";
+  if (wavelength < 400) region = "UV (Ultravioleta)";
+  else if (wavelength <= 700) region = "Visible / RFA";
+  else if (wavelength <= 1100) region = "IRC (Infrarrojo Cercano)";
 
   return (
     <div style={styles.tooltip}>
@@ -188,13 +188,13 @@ export const SuperimposedGraph: React.FC<SuperimposedGraphProps> = ({
                 x={PAR_START}
                 stroke="#666666"
                 strokeDasharray="4 4"
-                label={{ value: "PAR", position: "top", fill: "#888888", fontSize: 9 }}
+                label={{ value: "Inicio RFA", position: "top", fill: "#888888", fontSize: 9 }}
               />
               <ReferenceLine
                 x={PAR_END}
                 stroke="#666666"
                 strokeDasharray="4 4"
-                label={{ value: "Fin PAR", position: "top", fill: "#888888", fontSize: 9 }}
+                label={{ value: "Fin RFA", position: "top", fill: "#888888", fontSize: 9 }}
               />
 
               {dataKeys.map((key, index) => (

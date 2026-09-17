@@ -110,20 +110,37 @@ export const HistoryView: React.FC = () => {
                   />
                 )}
                 
-                {isSingleSelection && singleRecordDetail && (
-                  <div style={styles.metricsGrid}>
-                    <div style={styles.metricBox}>
-                      <div style={styles.metricLabel}>PAR</div>
-                      <div style={styles.metricValue}>{singleRecordDetail.par.toFixed(2)} W/m²</div>
-                    </div>
-                    <div style={styles.metricBox}>
-                      <div style={styles.metricLabel}>PPFD</div>
-                      <div style={styles.metricValue}>{singleRecordDetail.ppfd.toFixed(2)} µmol</div>
-                    </div>
-                    <div style={styles.metricBox}>
-                      <div style={styles.metricLabel}>Iluminancia</div>
-                      <div style={styles.metricValue}>{Math.round(singleRecordDetail.illuminance)} lx</div>
-                    </div>
+                {hasSelection && Object.keys(dataDict).length > 0 && (
+                  <div style={{ marginTop: 24, overflowY: "auto", paddingRight: 8, flex: 1, minHeight: 0 }}>
+                    {selectedIds.map(id => {
+                      const record = dataDict[id];
+                      if (!record) return null;
+                      return (
+                        <div key={id} style={{ marginBottom: 20 }}>
+                          <h4 style={{ color: '#cccccc', fontSize: 12, marginBottom: 12, borderBottom: '1px solid #333', paddingBottom: 6, fontWeight: 600, letterSpacing: "0.05em" }}>
+                            DATOS REGISTRADOS — MEDICIÓN #{id}
+                          </h4>
+                          <div style={styles.metricsGrid}>
+                            <div style={styles.metricBox}>
+                              <div style={styles.metricLabel}>Radiación PAR</div>
+                              <div style={styles.metricValue}>{record.par.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
+                            </div>
+                            <div style={styles.metricBox}>
+                              <div style={styles.metricLabel}>Flujo Fotones (PPFD)</div>
+                              <div style={styles.metricValue}>{record.ppfd.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>µmol</span></div>
+                            </div>
+                            <div style={styles.metricBox}>
+                              <div style={styles.metricLabel}>Iluminancia</div>
+                              <div style={styles.metricValue}>{Math.round(record.illuminance)} <span style={{fontSize: 12, color: "#888"}}>lx</span></div>
+                            </div>
+                            <div style={styles.metricBox}>
+                              <div style={styles.metricLabel}>Irradiancia Total</div>
+                              <div style={styles.metricValue}>{record.total_irradiance.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>

@@ -63,14 +63,27 @@ class FakeSpectroradiometerAdapter(SpectroradiometerPort):
                 detail=f"Identificador de sensor desconocido: {sensor_id}"
             )
 
-        # Generación de Espectros Crudos en unidades de irradiancia absoluta (W/m²/μm)
-        # Curva de distribución gaussiana + ruido blanco (random noise)
-        irradiance = 1000 * np.exp(-0.5 * ((wavelengths - 500) / 100) ** 2)
-        irradiance += np.random.normal(0, 2, len(wavelengths))
+        # Generación de Espectros Crudos (W/m²/μm)
+        # 1. Forma base asimétrica imitando el cuerpo negro solar (pico en visible, cola larga en NIR)
+        irradiance = 1200 * np.exp(-0.5 * ((wavelengths - 480) / 180) ** 2) + \
+                     500 * np.exp(-0.5 * ((wavelengths - 850) / 500) ** 2)
+
+        # 2. Bandas de absorción atmosférica reales (hace que la gráfica luzca 100% realista)
+        irradiance *= (1.0 - 0.5 * np.exp(-0.5 * ((wavelengths - 762) / 6) ** 2))    # Banda O-A (Oxígeno)
+        irradiance *= (1.0 - 0.8 * np.exp(-0.5 * ((wavelengths - 940) / 20) ** 2))   # Vapor de agua (PWV)
+        irradiance *= (1.0 - 0.85 * np.exp(-0.5 * ((wavelengths - 1140) / 30) ** 2)) # Vapor de agua
+        irradiance *= (1.0 - 0.95 * np.exp(-0.5 * ((wavelengths - 1380) / 40) ** 2)) # Vapor de agua fuerte
+        irradiance *= (1.0 - 0.95 * np.exp(-0.5 * ((wavelengths - 1870) / 60) ** 2)) # Vapor de agua profundo
+
+        # 3. Ruido blanco térmico del sensor
+        irradiance += np.random.normal(0, 4, len(wavelengths))
+        
+        # Recortar valores negativos físicamente imposibles
+        irradiance = np.clip(irradiance, 0, None)
 
         return SpectralData(
             wavelengths=wavelengths.tolist(),
-            irradiance=np.abs(irradiance).tolist()
+            irradiance=irradiance.tolist()
         )
 
     async def read_instrument_status(self, sensor_id: str) -> dict:

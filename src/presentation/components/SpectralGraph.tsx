@@ -31,13 +31,13 @@ const PAR_START = 400;
 const PAR_END = 700;
 
 const GRADIENT_STOPS = [
-  { offset: "0%", color: "#7c3aed" },     // UV
-  { offset: "15%", color: "#3b82f6" },    // Azul
-  { offset: "30%", color: "#10b981" },    // Verde
-  { offset: "40%", color: "#eab308" },    // Amarillo
-  { offset: "50%", color: "#ef4444" },    // Rojo
-  { offset: "65%", color: "#991b1b" },    // NIR cercano
-  { offset: "100%", color: "#451a03" },   // NIR lejano
+  { offset: "0%", color: "#6d28d9" },       // Ultravioleta
+  { offset: "5%", color: "#2563eb" },       // Azul
+  { offset: "10%", color: "#10b981" },      // Verde
+  { offset: "15%", color: "#eab308" },      // Amarillo
+  { offset: "20%", color: "#ef4444" },      // Rojo
+  { offset: "35%", color: "#991b1b" },      // Infrarrojo Cercano (Granate)
+  { offset: "100%", color: "#5c2e0e" },     // Infrarrojo de Onda Corta (Marrón cálido)
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────
@@ -71,20 +71,30 @@ const CustomTooltip: React.FC<{
   const wavelength = Number(label);
   const irradiance = payload[0].value as number;
 
-  let region = "NIR";
-  if (wavelength < 400) region = "UV";
-  else if (wavelength < 700) region = "VIS";
-  else if (wavelength < 780) region = "VIS/NIR";
+  let region = "IOC (Infrarrojo de Onda Corta)";
+  if (wavelength < 400) region = "UV (Ultravioleta)";
+  else if (wavelength <= 700) region = "Visible / RFA";
+  else if (wavelength <= 1100) region = "IRC (Infrarrojo Cercano)";
 
   return (
     <div style={styles.tooltip}>
-      <p style={styles.tooltipTitle}>
-        λ = {wavelength.toFixed(0)} nm
+      <p style={{ margin: "0 0 8px 0", color: "#cccccc", fontSize: 13, fontWeight: 600, borderBottom: "1px solid #333", paddingBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        Punto de Medición
         <span style={styles.tooltipRegion}>{region}</span>
       </p>
-      <p style={styles.tooltipValue}>
-        E(λ) = {irradiance.toFixed(3)} W/m²/µm
-      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <p style={{ margin: 0, fontSize: 14, color: "#ffffff", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+          (X, Y) = ({wavelength.toFixed(1)}, {irradiance.toFixed(4)})
+        </p>
+        <div style={{ marginTop: 4, paddingLeft: 8, borderLeft: "2px solid #333", display: "flex", flexDirection: "column", gap: 4 }}>
+          <p style={{ margin: 0, fontSize: 11, color: "#888888", fontFamily: "'JetBrains Mono', monospace" }}>
+            <strong style={{ color: "#aaa" }}>X:</strong> {wavelength.toFixed(1)} nm <span style={{ fontSize: 9 }}>(Longitud de onda)</span>
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: "#888888", fontFamily: "'JetBrains Mono', monospace" }}>
+            <strong style={{ color: "#aaa" }}>Y:</strong> {irradiance.toFixed(4)} W/m²/µm <span style={{ fontSize: 9 }}>(Irradiancia)</span>
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -200,13 +210,13 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
                 x={PAR_START}
                 stroke="#666666"
                 strokeDasharray="4 4"
-                label={{ value: "PAR", position: "top", fill: "#888888", fontSize: 9 }}
+                label={{ value: "Inicio RFA", position: "top", fill: "#888888", fontSize: 9 }}
               />
               <ReferenceLine
                 x={PAR_END}
                 stroke="#666666"
                 strokeDasharray="4 4"
-                label={{ value: "Fin PAR", position: "top", fill: "#888888", fontSize: 9 }}
+                label={{ value: "Fin RFA", position: "top", fill: "#888888", fontSize: 9 }}
               />
               
               <Area
@@ -227,9 +237,10 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
         </div>
 
         <div style={styles.legend}>
-          <LegendItem color="#7c3aed" label="UV" />
-          <LegendItem color="#10b981" label="VIS / PAR" />
-          <LegendItem color="#991b1b" label="NIR" />
+          <LegendItem color="#6d28d9" label="Ultravioleta (<400nm)" />
+          <LegendItem color="#10b981" label="Visible / Radiación PAR (400-700nm)" />
+          <LegendItem color="#991b1b" label="Infrarrojo Cercano (700-1100nm)" />
+          <LegendItem color="#5c2e0e" label="Infrarrojo de Onda Corta (>1100nm)" />
         </div>
       </div>
 

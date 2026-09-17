@@ -23,6 +23,40 @@ interface ExpandedGraphModalProps {
 const PAR_START = 400;
 const PAR_END = 700;
 
+const CustomExpandedTooltip: React.FC<any> = ({ active, payload, label }) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const xValue = Number(label);
+  const yValue = payload[0].value as number;
+
+  return (
+    <div style={{
+      backgroundColor: "#111111",
+      border: "1px solid #333333",
+      borderRadius: 6,
+      padding: "12px 16px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+    }}>
+      <p style={{ margin: "0 0 8px 0", color: "#cccccc", fontSize: 13, fontWeight: 600, borderBottom: "1px solid #333", paddingBottom: 6 }}>
+        Punto de Medición
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <p style={{ margin: 0, fontSize: 14, color: "#ffffff", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+          (X, Y) = ({xValue.toFixed(1)}, {yValue.toFixed(4)})
+        </p>
+        <div style={{ marginTop: 4, paddingLeft: 8, borderLeft: "2px solid #333", display: "flex", flexDirection: "column", gap: 4 }}>
+          <p style={{ margin: 0, fontSize: 11, color: "#888888", fontFamily: "'JetBrains Mono', monospace" }}>
+            <strong style={{ color: "#aaa" }}>X:</strong> {xValue.toFixed(1)} nm <span style={{ fontSize: 9 }}>(Longitud de onda)</span>
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: "#888888", fontFamily: "'JetBrains Mono', monospace" }}>
+            <strong style={{ color: "#aaa" }}>Y:</strong> {yValue.toFixed(4)} W/m²/µm <span style={{ fontSize: 9 }}>(Irradiancia)</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ExpandedGraphModal: React.FC<ExpandedGraphModalProps> = ({
   isOpen,
   onClose,
@@ -199,8 +233,7 @@ export const ExpandedGraphModal: React.FC<ExpandedGraphModalProps> = ({
               />
               
               <Tooltip 
-                contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: 4 }}
-                itemStyle={{ color: "#eee" }}
+                content={<CustomExpandedTooltip />}
                 cursor={{ stroke: '#555', strokeWidth: 1, strokeDasharray: '4 4' }} 
               />
               
@@ -208,13 +241,13 @@ export const ExpandedGraphModal: React.FC<ExpandedGraphModalProps> = ({
                 x={PAR_START}
                 stroke="#666"
                 strokeDasharray="4 4"
-                label={{ value: "PAR", position: "top", fill: "#888", fontSize: 10 }}
+                label={{ value: "Inicio RFA", position: "top", fill: "#888", fontSize: 10 }}
               />
               <ReferenceLine
                 x={PAR_END}
                 stroke="#666"
                 strokeDasharray="4 4"
-                label={{ value: "Fin PAR", position: "top", fill: "#888", fontSize: 10 }}
+                label={{ value: "Fin RFA", position: "top", fill: "#888", fontSize: 10 }}
               />
 
               {lines.map((line) => (

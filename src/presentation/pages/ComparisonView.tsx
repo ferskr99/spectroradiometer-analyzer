@@ -80,12 +80,48 @@ export const ComparisonView: React.FC = () => {
               </button>
             </div>
 
-            <div style={styles.graphContainer}>
-              <SuperimposedGraph 
-                dataDict={dataDict} 
-                isLoading={isLoading} 
-                height={550} 
-              />
+            <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+              <div style={styles.graphContainer}>
+                <SuperimposedGraph 
+                  dataDict={dataDict} 
+                  isLoading={isLoading} 
+                  height={450} 
+                />
+              </div>
+
+              {selectedIds.length > 0 && Object.keys(dataDict).length > 0 && (
+                <div style={{ marginTop: 24, overflowY: "auto", paddingRight: 8, flex: 1, minHeight: 0 }}>
+                  {selectedIds.map(id => {
+                    const record = dataDict[id];
+                    if (!record) return null;
+                    return (
+                      <div key={id} style={{ marginBottom: 20 }}>
+                        <h4 style={{ color: '#cccccc', fontSize: 12, marginBottom: 12, borderBottom: '1px solid #333', paddingBottom: 6, fontWeight: 600, letterSpacing: "0.05em" }}>
+                          DATOS REGISTRADOS — MEDICIÓN #{id}
+                        </h4>
+                        <div style={styles.metricsGrid}>
+                          <div style={styles.metricBox}>
+                            <div style={styles.metricLabel}>Radiación PAR</div>
+                            <div style={styles.metricValue}>{record.par.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
+                          </div>
+                          <div style={styles.metricBox}>
+                            <div style={styles.metricLabel}>Flujo Fotones (PPFD)</div>
+                            <div style={styles.metricValue}>{record.ppfd.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>µmol</span></div>
+                          </div>
+                          <div style={styles.metricBox}>
+                            <div style={styles.metricLabel}>Iluminancia</div>
+                            <div style={styles.metricValue}>{Math.round(record.illuminance)} <span style={{fontSize: 12, color: "#888"}}>lx</span></div>
+                          </div>
+                          <div style={styles.metricBox}>
+                            <div style={styles.metricLabel}>Irradiancia Total</div>
+                            <div style={styles.metricValue}>{record.total_irradiance.toFixed(2)} <span style={{fontSize: 12, color: "#888"}}>W/m²</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
           </div>
@@ -168,4 +204,30 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: 16,
   },
+  metricsGrid: {
+    display: "flex",
+    gap: 16,
+  },
+  metricBox: {
+    flex: 1,
+    backgroundColor: "#161616",
+    border: "1px solid #2a2a2a",
+    borderRadius: 6,
+    padding: "16px 20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  metricLabel: {
+    color: "#888888",
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+  metricValue: {
+    color: "#e0e0e0",
+    fontSize: 18,
+    fontWeight: 600,
+    fontFamily: "'JetBrains Mono', monospace",
+  }
 };
