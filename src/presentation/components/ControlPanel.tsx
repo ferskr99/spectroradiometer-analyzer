@@ -66,6 +66,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onExposureTimeChange,
   autoExposure,
   onAutoExposureChange,
+  appliedExposureMs,
 }) => {
 
   const handleExposureInput = useCallback(
@@ -99,7 +100,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       <div style={styles.header}>
         <h3 style={styles.title}>
           <SlidersHorizontal size={14} style={{ marginRight: 6 }} />
-          Control del Instrumento
+          Control Manual
         </h3>
         <div
           style={{
@@ -144,7 +145,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 onChange={(e) => onAutoExposureChange(e.target.checked)} 
                 disabled={isPending}
               />
-              Auto-Exposición
+              Auto-Exposición {autoExposure && appliedExposureMs ? `(${appliedExposureMs} ms)` : ""}
             </label>
           </div>
           
@@ -257,7 +258,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 24,
-    flex: 2,
+    flex: 1,
   },
   header: {
     display: "flex",
@@ -282,7 +283,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   horizontalBody: {
     display: "grid",
-    gridTemplateColumns: "minmax(300px, 1fr) minmax(320px, 1fr) minmax(260px, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
     gap: 28,
     alignItems: "start",
   },

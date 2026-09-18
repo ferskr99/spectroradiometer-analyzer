@@ -42,55 +42,60 @@ export const Dashboard: React.FC = () => {
           onExposureTimeChange={setExposureTime}
           autoExposure={autoExposure}
           onAutoExposureChange={setAutoExposure}
+          appliedExposureMs={isSuccess ? data?.applied_exposure_ms : null}
         />
         <ContinuousSchedulerPanel />
       </div>
 
+      {/* 2. Fila Inferior (Métricas Izquierda, Gráfico Derecha) */}
+      <div style={styles.bottomRow}>
+        <div style={styles.metricsColumn}>
+          <MetricsSummary
+            data={data ?? null}
+            isLoading={isPending}
+          />
+        </div>
 
-      {/* 2. Tarjetas de Métricas (Fila Horizontal) */}
-      <MetricsSummary
-        data={data ?? null}
-        isLoading={isPending}
-      />
-
-      {/* 3. Gráfico Espectral (Centro Principal) */}
-      <div style={styles.graphWrapper}>
-        <SpectralGraph
-          data={data?.merged_spectrum ?? null}
-          isLoading={isPending}
-          height="100%"
-        />
-        <div style={styles.statusBar}>
-          <div style={styles.statusLeft}>
-            {isPending ? (
-              <span style={styles.statusTextActive}>
-                <Clock size={14} />
-                Adquiriendo datos (Obturador abierto)...
-              </span>
-            ) : isSuccess && data ? (
-              <span style={styles.statusText}>
-                <FileText size={14} />
-                Última medición: {data.merged_spectrum?.wavelengths.length ?? 0} puntos 
-                {data.applied_exposure_ms ? ` (Exp: ${data.applied_exposure_ms}ms)` : ""}
-              </span>
-            ) : isError ? (
-              <span style={styles.statusTextError}>
-                <AlertCircle size={14} />
-                Error en la última medición
-              </span>
-            ) : (
-              <span style={styles.statusText}>
-                Listo
-              </span>
-            )}
+        <div style={styles.graphColumn}>
+          <div style={styles.graphWrapper}>
+            <SpectralGraph
+              data={data?.merged_spectrum ?? null}
+              isLoading={isPending}
+              height="100%"
+            />
           </div>
-          <span style={styles.statusTimestamp}>
-            {new Date().toLocaleTimeString("es-MX", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })}
-          </span>
+          <div style={styles.statusBar}>
+            <div style={styles.statusLeft}>
+              {isPending ? (
+                <span style={styles.statusTextActive}>
+                  <Clock size={14} />
+                  Adquiriendo datos (Obturador abierto)...
+                </span>
+              ) : isSuccess && data ? (
+                <span style={styles.statusText}>
+                  <FileText size={14} />
+                  Última medición: {data.merged_spectrum?.wavelengths.length ?? 0} puntos 
+                  {data.applied_exposure_ms ? ` (Exp: ${data.applied_exposure_ms}ms)` : ""}
+                </span>
+              ) : isError ? (
+                <span style={styles.statusTextError}>
+                  <AlertCircle size={14} />
+                  Error en la última medición
+                </span>
+              ) : (
+                <span style={styles.statusText}>
+                  Listo
+                </span>
+              )}
+            </div>
+            <span style={styles.statusTimestamp}>
+              {new Date().toLocaleTimeString("es-MX", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </span>
+          </div>
         </div>
       </div>
     </main>
@@ -114,10 +119,28 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
     alignItems: "stretch",
   },
-  graphWrapper: {
+  bottomRow: {
+    display: "flex",
+    gap: 12,
+    flex: 1,
+    minHeight: 0,
+  },
+  metricsColumn: {
+    width: "480px",
+    flexShrink: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflowY: "auto",
+    overflowX: "hidden",
+  },
+  graphColumn: {
     display: "flex",
     flexDirection: "column",
     gap: 12,
+    flex: 1,
+    minWidth: 0,
+  },
+  graphWrapper: {
     flex: 1,
     minHeight: 0,
   },
@@ -129,6 +152,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "#1e1e1e",
     border: "1px solid #333333",
     borderRadius: 4,
+    flexShrink: 0,
   },
   statusLeft: {
     display: "flex",

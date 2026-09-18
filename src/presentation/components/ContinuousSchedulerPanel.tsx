@@ -80,7 +80,7 @@ export const ContinuousSchedulerPanel: React.FC = () => {
       <div style={styles.header}>
         <div style={styles.titleBox}>
           <Clock size={16} color="#0078d4" />
-          <h3 style={styles.title}>Programador de Medición Continua</h3>
+          <h3 style={styles.title}>Control Programado</h3>
         </div>
         {status.is_running ? (
           <span style={styles.badgeActive}>EJECUTANDO</span>
