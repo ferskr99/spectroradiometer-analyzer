@@ -264,8 +264,8 @@ async def analyze_spectra(
             illuminance=illuminance,
             total_irradiance=total_irradiance,
             pwv_cm=pwv,
-            aod_nm500=aod.get('500nm', 0.0) if aod else None,
-            sza=solar_pos.get('zenith'),
+            aod_nm500=aod.get(500, 0.0) if aod else None,
+            sza=solar_pos.get('sza'),
             air_mass=air_mass
         )
         record.set_spectrum(interpolated.model_dump())
