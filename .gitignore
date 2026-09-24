@@ -1,0 +1,30 @@
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Node
+node_modules/
+package-lock.json
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*.class
+
+# Bases de datos y exports
+*.db
+*.sqlite
+exports/
+
+# Entorno y configuraciones locales
+.env
+.vscode/
+.idea/
+
+# Datos generados temporalmente (WSD, CSV masivos)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+dist/
