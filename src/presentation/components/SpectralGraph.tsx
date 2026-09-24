@@ -350,7 +350,7 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={chartData}
-              margin={{ top: 10, right: 20, left: 0, bottom: 20 }}
+              margin={{ top: 10, right: 20, left: 30, bottom: 20 }}
             >
               <defs>
                 <linearGradient id="globalFillGradient" x1="0" y1="0" x2="0" y2="1">
@@ -390,12 +390,13 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
                 allowDataOverflow={true}
                 tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
                 axisLine={{ stroke: "#333333" }}
+                width={70}
                 tickFormatter={(v: number) => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)}
                 label={{
                   value: "Irradiancia (W/m²/µm)",
                   angle: -90,
                   position: "insideLeft",
-                  offset: 0,
+                  offset: -10,
                   style: { fill: "#888888", fontSize: 11, fontWeight: 500, textTransform: "uppercase" },
                 }}
               />
@@ -468,12 +469,7 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
           {isLoading && <LoadingOverlay />}
         </div>
 
-        <div style={styles.legend}>
-          <LegendItem color="#6d28d9" label="Ultravioleta (<400nm)" />
-          <LegendItem color="#10b981" label="Visible / Radiación PAR (400-700nm)" />
-          <LegendItem color="#991b1b" label="Infrarrojo Cercano (700-1100nm)" />
-          <LegendItem color="#5c2e0e" label="Infrarrojo de Onda Corta (>1100nm)" />
-        </div>
+        {/* Legend block removed to clean up UI */}
       </div>
 
       <ExpandedGraphModal
