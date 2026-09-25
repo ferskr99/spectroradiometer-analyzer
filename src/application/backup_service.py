@@ -47,10 +47,10 @@ class BackupService:
                         r.timestamp.isoformat(),
                         r.sensor_target,
                         r.exposure_time_ms,
-                        f"{r.par:.4f}",
-                        f"{r.ppfd:.4f}",
-                        f"{r.illuminance:.2f}",
-                        f"{r.total_irradiance:.4f}"
+                        f"{r.par:.4f}" if r.par is not None else "N/A",
+                        f"{r.ppfd:.4f}" if r.ppfd is not None else "N/A",
+                        f"{r.illuminance:.2f}" if r.illuminance is not None else "N/A",
+                        f"{r.total_irradiance:.4f}" if r.total_irradiance is not None else "N/A"
                     ])
                     count += 1
                     
