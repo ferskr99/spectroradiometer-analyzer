@@ -595,19 +595,11 @@ async def analyze_spectra(
         db.commit()
         db.refresh(r_main)
 
-        # Broadcast asíncrono al frontend (no bloqueante)
-        asyncio.create_task(ws_manager.broadcast_measurement({
-            "id": r_main.id,
-            "timestamp": r_main.timestamp.isoformat(),
-            "measurement_mode": r_main.measurement_mode,
-            "par": par if par is not None and not math.isnan(par) else None,
-            "ppfd": ppfd if ppfd is not None and not math.isnan(ppfd) else None,
-            "illuminance": illuminance if illuminance is not None and not math.isnan(illuminance) else None,
-            "total_irradiance": total_irradiance if total_irradiance is not None and not math.isnan(total_irradiance) else None,
-            "pwv_cm": pwv if pwv is not None and not math.isnan(pwv) else None,
-            "aod_bands": {k: (v if not math.isnan(v) else None) for k, v in aod.items()} if aod else None,
-            "solar_geometry": solar_pos,
-        }))
+        # Broadcast asíncrono al frontend con el payload completo (para el Dashboard)
+        ws_payload = base_dump.copy()
+        ws_payload["id"] = r_main.id
+        ws_payload["timestamp"] = r_main.timestamp.isoformat()
+        asyncio.create_task(ws_manager.broadcast_measurement(ws_payload))
 
         return result
 
