@@ -340,7 +340,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: { margin: 0, fontSize: 24, fontWeight: 600, color: "#e0e0e0", letterSpacing: "-0.02em" },
   subtitle: { margin: "4px 0 0 0", color: "#888", fontSize: 14 },
   warningBanner: { display: "flex", alignItems: "center", gap: 12, backgroundColor: "rgba(234, 179, 8, 0.1)", border: "1px solid rgba(234, 179, 8, 0.2)", color: "#eab308", padding: "12px 16px", borderRadius: 8, marginBottom: 24, fontSize: 13 },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 32 },
+  grid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24, marginBottom: 32 },
   card: { backgroundColor: "#161616", border: "1px solid #333", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" },
   cardHeader: { display: "flex", alignItems: "center", gap: 10, padding: "20px 20px 8px 20px" },
   cardTitle: { margin: 0, fontSize: 15, fontWeight: 600, color: "#e0e0e0" },
