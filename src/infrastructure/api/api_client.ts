@@ -515,6 +515,16 @@ export interface HardwareSettings {
     direct: SensorGroupConfig;
   };
   tracker?: SensorPortConfig;
+  station?: {
+    latitude: number;
+    longitude: number;
+    altitude: number;
+    pressure: number;
+  };
+  database?: {
+    backup_interval_h: number;
+    retention_days: number;
+  };
 }
 
 export type TrackerCalibrationCommand =

@@ -46,7 +46,17 @@ def _load_settings() -> dict:
             "global": {"ms711": {"port": "COM3", "enabled": True}, "ms713": {"port": "COM4", "enabled": True}},
             "direct": {"ms711": {"port": "COM5", "enabled": True}, "ms713": {"port": "COM6", "enabled": True}},
         },
-        "tracker": {"port": "COM7", "enabled": False}
+        "tracker": {"port": "COM7", "enabled": False},
+        "station": {
+            "latitude": -12.0553,
+            "longitude": -77.0842,
+            "altitude": 150.0,
+            "pressure": 1013.25
+        },
+        "database": {
+            "backup_interval_h": 24,
+            "retention_days": 30
+        }
     }
 
 def _save_settings(data: dict):

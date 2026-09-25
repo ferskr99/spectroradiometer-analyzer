@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { apiClient } from "../../infrastructure/api/api_client";
 import type { HardwareSettings, SerialPortInfo } from "../../infrastructure/api/api_client";
-import { Settings, Usb, Save, RefreshCw, CheckCircle, AlertCircle, Globe, Crosshair, Navigation, Wrench } from "lucide-react";
+import { Settings, Usb, Save, RefreshCw, CheckCircle, AlertCircle, Globe, Crosshair, Navigation, MapPin, Database, Wrench } from "lucide-react";
 import { TrackerCalibrationModal } from "../components/TrackerCalibrationModal";
 
 export const SettingsView: React.FC = () => {
@@ -62,7 +62,21 @@ export const SettingsView: React.FC = () => {
     }));
   };
 
-  const handleToggle = (group: "global" | "direct" | "tracker", sensor: "ms711" | "ms713" | "tracker") => {
+  
+  const handleStationChange = (field: keyof typeof settings.station, value: number) => {
+    setSettings(prev => prev && prev.station ? {
+      ...prev,
+      station: { ...prev.station, [field]: value }
+    } : prev);
+  };
+
+  const handleDbChange = (field: keyof typeof settings.database, value: number) => {
+    setSettings(prev => prev && prev.database ? {
+      ...prev,
+      database: { ...prev.database, [field]: value }
+    } : prev);
+  };
+const handleToggle = (group: "global" | "direct" | "tracker", sensor: "ms711" | "ms713" | "tracker") => {
     if (group === "tracker") {
       setSettings(prev => ({ ...prev, tracker: { ...prev.tracker!, enabled: !prev.tracker!.enabled } }));
       return;
@@ -214,32 +228,78 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
+        {/* Estación y Geolocalización */}
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <MapPin size={18} color="#10b981" />
+            <h3 style={styles.cardTitle}>Geolocalización</h3>
+          </div>
+          <p style={styles.cardDesc}>Parámetros de la estación para geometría solar.</p>
+          <div style={styles.cardBody}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Latitud (°)</label>
+              <input type="number" step="0.0001" style={styles.input} value={settings.station?.latitude || ""} onChange={(e) => handleStationChange("latitude", parseFloat(e.target.value))} />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Longitud (°)</label>
+              <input type="number" step="0.0001" style={styles.input} value={settings.station?.longitude || ""} onChange={(e) => handleStationChange("longitude", parseFloat(e.target.value))} />
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{...styles.formGroup, flex: 1}}>
+                <label style={styles.label}>Altitud (msnm)</label>
+                <input type="number" step="1" style={styles.input} value={settings.station?.altitude || ""} onChange={(e) => handleStationChange("altitude", parseFloat(e.target.value))} />
+              </div>
+              <div style={{...styles.formGroup, flex: 1}}>
+                <label style={styles.label}>Presión (hPa)</label>
+                <input type="number" step="0.1" style={styles.input} value={settings.station?.pressure || ""} onChange={(e) => handleStationChange("pressure", parseFloat(e.target.value))} />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Tracker Solar */}
-        <div style={{ ...styles.card, gridColumn: "1 / -1" }}>
+        <div style={styles.card}>
           <div style={styles.cardHeader}>
             <Navigation size={18} color="#eab308" />
-            <h3 style={styles.cardTitle}>Sun Tracker (STR-22G/32G)</h3>
+            <h3 style={styles.cardTitle}>Sun Tracker (STR)</h3>
           </div>
-          <p style={styles.cardDesc}>Dispositivo motorizado para el seguimiento solar requerido por los sensores directos.</p>
-          <div style={{ ...styles.cardBody, maxWidth: 350 }}>
+          <p style={styles.cardDesc}>Dispositivo motorizado para el seguimiento solar.</p>
+          <div style={styles.cardBody}>
             {settings.tracker && renderPortSelect("tracker", "tracker", "Controlador RS-232C")}
+            
+            <div style={{ paddingTop: 8 }}>
+              <button
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  width: "100%", padding: "10px 16px",
+                  backgroundColor: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.25)",
+                  color: "#eab308", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                }}
+                onClick={() => setIsCalibrationOpen(true)}
+              >
+                <Wrench size={14} />
+                Calibración Avanzada
+              </button>
+            </div>
           </div>
-          <div style={{ padding: "0 20px 20px 20px" }}>
-            <button
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                width: "100%", maxWidth: 350, padding: "10px 16px",
-                backgroundColor: "rgba(234,179,8,0.1)",
-                border: "1px solid rgba(234,179,8,0.25)",
-                color: "#eab308",
-                borderRadius: 8, fontSize: 13, fontWeight: 600,
-                cursor: "pointer", transition: "all 0.2s",
-              }}
-              onClick={() => setIsCalibrationOpen(true)}
-            >
-              <Wrench size={14} />
-              Calibración Avanzada
-            </button>
+        </div>
+
+        {/* Base de Datos y Sistema */}
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <Database size={18} color="#8b5cf6" />
+            <h3 style={styles.cardTitle}>Sistema y DB</h3>
+          </div>
+          <p style={styles.cardDesc}>Retención de datos y copias de seguridad.</p>
+          <div style={styles.cardBody}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Retención de datos (Días)</label>
+              <input type="number" step="1" style={styles.input} value={settings.database?.retention_days || ""} onChange={(e) => handleDbChange("retention_days", parseInt(e.target.value))} />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Intervalo de Backup Auto (Horas)</label>
+              <input type="number" step="1" style={styles.input} value={settings.database?.backup_interval_h || ""} onChange={(e) => handleDbChange("backup_interval_h", parseInt(e.target.value))} />
+            </div>
           </div>
         </div>
       </div>
@@ -274,13 +334,13 @@ export const SettingsView: React.FC = () => {
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  container: { padding: 32, maxWidth: 1000, margin: "0 auto" },
+  container: { padding: 32, maxWidth: 1200, margin: "0 auto" },
   header: { display: "flex", alignItems: "center", gap: 16, marginBottom: 32 },
   iconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: "rgba(139, 92, 246, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(139, 92, 246, 0.2)" },
   title: { margin: 0, fontSize: 24, fontWeight: 600, color: "#e0e0e0", letterSpacing: "-0.02em" },
   subtitle: { margin: "4px 0 0 0", color: "#888", fontSize: 14 },
   warningBanner: { display: "flex", alignItems: "center", gap: 12, backgroundColor: "rgba(234, 179, 8, 0.1)", border: "1px solid rgba(234, 179, 8, 0.2)", color: "#eab308", padding: "12px 16px", borderRadius: 8, marginBottom: 24, fontSize: 13 },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 32 },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 32 },
   card: { backgroundColor: "#161616", border: "1px solid #333", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" },
   cardHeader: { display: "flex", alignItems: "center", gap: 10, padding: "20px 20px 8px 20px" },
   cardTitle: { margin: 0, fontSize: 15, fontWeight: 600, color: "#e0e0e0" },
@@ -290,7 +350,7 @@ const styles: Record<string, React.CSSProperties> = {
   sensorHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   label: { fontSize: 12, fontWeight: 500, color: "#aaa" },
   toggleButton: { padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600, border: "1px solid", cursor: "pointer", transition: "all 0.2s" },
-  select: { backgroundColor: "#111", border: "1px solid #444", color: "#e0e0e0", borderRadius: 6, padding: "8px 12px", fontSize: 13, outline: "none", cursor: "pointer", transition: "all 0.2s" },
+  input: { backgroundColor: "#111", border: "1px solid #444", color: "#e0e0e0", borderRadius: 6, padding: "8px 12px", fontSize: 13, outline: "none", width: "100%" }, select: { backgroundColor: "#111", border: "1px solid #444", color: "#e0e0e0", borderRadius: 6, padding: "8px 12px", fontSize: 13, outline: "none", cursor: "pointer", transition: "all 0.2s" },
   testBtn: { padding: "0 12px", borderRadius: 6, backgroundColor: "#222", border: "1px solid #444", color: "#ccc", cursor: "pointer", fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center" },
   testResult: { display: "flex", alignItems: "center", gap: 6, fontSize: 11, marginTop: 4 },
   footer: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0", borderTop: "1px solid #333" },
