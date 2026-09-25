@@ -23,7 +23,7 @@ export const useAppWebSocket = () => {
       wsRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          if (message.event === "NEW_MEASUREMENT") {
+          if (message.type === "measurement") {
             console.log("Nueva medición detectada, invalidando caché de historial:", message.data);
             // Invalida la query para que React Query refetch el historial
             queryClient.invalidateQueries({ queryKey: ["history", "list"] });
