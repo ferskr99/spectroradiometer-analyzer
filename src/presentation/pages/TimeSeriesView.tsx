@@ -130,7 +130,7 @@ export const TimeSeriesView: React.FC = () => {
                 
                 <Line 
                   yAxisId="left"
-                  type="monotone" 
+                  type="linear" 
                   dataKey="total_irradiance" 
                   name="Irradiancia Total" 
                   stroke="#eab308" 
@@ -140,7 +140,7 @@ export const TimeSeriesView: React.FC = () => {
                 />
                 <Line 
                   yAxisId="right"
-                  type="monotone" 
+                  type="linear" 
                   dataKey="par" 
                   name="Radiación PAR" 
                   stroke="#22c55e" 
