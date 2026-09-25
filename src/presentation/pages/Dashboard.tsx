@@ -7,6 +7,7 @@
  */
 
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAnalyzeSpectrum } from "../../application/hooks/useSpectrometer";
 import { ControlPanel } from "../components/ControlPanel";
 
@@ -20,13 +21,21 @@ export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"consolidated" | "raw">("consolidated");
   const {
     analyze,
-    data,
+    data: mutationData,
     isPending,
     isError,
     error,
     isSuccess,
     reset,
   } = useAnalyzeSpectrum();
+
+  const { data: cachedData } = useQuery<any>({
+    queryKey: ["lastAnalysis"],
+    staleTime: Infinity,
+  });
+
+  const activeData = cachedData ?? mutationData;
+  const isDataAvailable = !!activeData;
 
   return (
     <main style={styles.main}>
@@ -46,7 +55,7 @@ export const Dashboard: React.FC = () => {
               setSensorTarget(target);
               reset();
             }}
-            appliedExposurePerSensor={isSuccess ? data?.applied_exposure_per_sensor : null}
+            appliedExposurePerSensor={isDataAvailable ? activeData?.applied_exposure_per_sensor : null}
           />
         </div>
 
@@ -75,10 +84,10 @@ export const Dashboard: React.FC = () => {
         <div style={styles.graphContainer}>
           {activeTab === "consolidated" ? (
             <SpectralGraph
-              data={isSuccess ? data?.merged_spectrum ?? null : null}
-              globalData={isSuccess ? data?.global_spectrum ?? null : null}
-              directData={isSuccess ? data?.direct_spectrum ?? null : null}
-              diffuseData={isSuccess ? data?.diffuse_spectrum ?? null : null}
+              data={isDataAvailable ? activeData?.merged_spectrum ?? null : null}
+              globalData={isDataAvailable ? activeData?.global_spectrum ?? null : null}
+              directData={isDataAvailable ? activeData?.direct_spectrum ?? null : null}
+              diffuseData={isDataAvailable ? activeData?.diffuse_spectrum ?? null : null}
               rawSpectra={null}
               sensorTarget={sensorTarget}
               isLoading={isPending}
@@ -86,7 +95,7 @@ export const Dashboard: React.FC = () => {
             />
           ) : (
             <RawSensorsGraph 
-              data={isSuccess ? (data ?? null) : null} 
+              data={isDataAvailable ? (activeData ?? null) : null} 
               isLoading={isPending} 
               height="100%" 
             />
@@ -97,7 +106,7 @@ export const Dashboard: React.FC = () => {
           <div style={styles.statusLeft}>
             {isPending ? (
               <span style={styles.statusTextActive}><Clock size={13} /> Adquiriendo datos espectrales...</span>
-            ) : isSuccess && data ? (
+            ) : isDataAvailable ? (
               <span style={styles.statusText}><FileText size={13} /> Última medición completada con éxito</span>
             ) : isError ? (
               <span style={styles.statusTextError}><AlertCircle size={13} /> Error en la última medición</span>

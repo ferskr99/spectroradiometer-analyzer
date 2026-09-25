@@ -27,6 +27,8 @@ export const useAppWebSocket = () => {
             console.log("Nueva medición detectada, invalidando caché de historial:", message.data);
             // Invalida la query para que React Query refetch el historial
             queryClient.invalidateQueries({ queryKey: ["history", "list"] });
+            // Guardar el análisis completo en la caché para el Dashboard
+            queryClient.setQueryData(["lastAnalysis"], message.data);
             // Notifica a los componentes que usan estado local (ej. DataLog.tsx)
             window.dispatchEvent(new Event("spectrometer:measurement_complete"));
           }
