@@ -22,6 +22,7 @@ export interface SpectralGraphProps {
   globalData?: SpectralData | null;
   directData?: SpectralData | null;
   diffuseData?: SpectralData | null;
+  crossMetrics?: any | null;
   rawSpectra?: Record<string, SpectralData> | null;
   sensorTarget?: "Global" | "Direct" | "All" | string;
   isLoading: boolean;
@@ -137,6 +138,7 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
   globalData,
   directData,
   diffuseData,
+  crossMetrics,
   rawSpectra,
   sensorTarget = "All",
   isLoading,
@@ -226,7 +228,8 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
     }
 
     return Array.from(wavelengthMap.values()).sort((a, b) => a.wavelength - b.wavelength);
-  }, [data, globalData, directData, diffuseData, sensorTarget, rawSpectra]);
+  }, [data, globalData, directData, diffuseData,
+  crossMetrics, sensorTarget, rawSpectra]);
 
   // Escala Y dinámica considerando únicamente las series visibles
   const dynamicYMax = useMemo(() => {
@@ -335,7 +338,14 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
             )}
           </div>
 
+
           <div style={styles.actions}>
+            {weatherStatus && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, backgroundColor: weatherStatus.color + "20", border: `1px solid ${weatherStatus.color}40`, padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, color: weatherStatus.color, marginRight: 16 }}>
+                <span>{weatherStatus.icon}</span> {weatherStatus.label}
+              </div>
+            )}
+
             <button 
               style={styles.actionBtn} 
               onClick={() => setIsModalOpen(true)}
