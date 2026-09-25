@@ -121,6 +121,13 @@ class EkoFakeAdapter(SpectroradiometerPort):
         irradiance *= (1.0 - 0.96 * np.exp(-0.5 * ((wavelengths - 1380) / 40) ** 2))
         irradiance *= (1.0 - 0.96 * np.exp(-0.5 * ((wavelengths - 1870) / 60) ** 2))
 
+        # Simular variación climática notoria para el modo demostración (nubes, viento)
+        # Esto asegura que cada lectura programada se vea diferente en el dashboard
+        import time
+        t = time.time() / 60.0  # Minutos
+        cloud_simulation = 0.85 + 0.15 * math.sin(t * 1.5) + random.uniform(-0.05, 0.05)
+        irradiance *= cloud_simulation
+
         if is_direct:
             direct_factor = 0.82
             irradiance *= direct_factor
