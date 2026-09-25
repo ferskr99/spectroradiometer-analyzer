@@ -174,6 +174,15 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
     }
   }, [sensorTarget]);
 
+
+  const weatherStatus = useMemo(() => {
+    if (!crossMetrics || !crossMetrics.clearness_index) return null;
+    const kt = crossMetrics.clearness_index;
+    if (kt < 0.35) return { label: "Cielo Nublado", color: "#ef4444", icon: "☁️" };
+    if (kt < 0.65) return { label: "Nubosidad Parcial", color: "#eab308", icon: "⛅" };
+    return { label: "Cielo Despejado", color: "#10b981", icon: "☀️" };
+  }, [crossMetrics]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Unificación de datasets espectrales por longitud de onda
