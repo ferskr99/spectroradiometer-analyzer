@@ -70,12 +70,6 @@ export const SettingsView: React.FC = () => {
     } : prev);
   };
 
-  const handleDbChange = (field: keyof typeof settings.database, value: number) => {
-    setSettings(prev => prev && prev.database ? {
-      ...prev,
-      database: { ...prev.database, [field]: value }
-    } : prev);
-  };
 const handleToggle = (group: "global" | "direct" | "tracker", sensor: "ms711" | "ms713" | "tracker") => {
     if (group === "tracker") {
       setSettings(prev => ({ ...prev, tracker: { ...prev.tracker!, enabled: !prev.tracker!.enabled } }));
@@ -284,24 +278,7 @@ const handleToggle = (group: "global" | "direct" | "tracker", sensor: "ms711" | 
           </div>
         </div>
 
-        {/* Base de Datos y Sistema */}
-        <div style={styles.card}>
-          <div style={styles.cardHeader}>
-            <Database size={18} color="#8b5cf6" />
-            <h3 style={styles.cardTitle}>Sistema y DB</h3>
-          </div>
-          <p style={styles.cardDesc}>Retención de datos y copias de seguridad.</p>
-          <div style={styles.cardBody}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Retención de datos (Días)</label>
-              <input type="number" step="1" style={styles.input} value={settings.database?.retention_days || ""} onChange={(e) => handleDbChange("retention_days", parseInt(e.target.value))} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Intervalo de Backup Auto (Horas)</label>
-              <input type="number" step="1" style={styles.input} value={settings.database?.backup_interval_h || ""} onChange={(e) => handleDbChange("backup_interval_h", parseInt(e.target.value))} />
-            </div>
-          </div>
-        </div>
+
       </div>
 
       <div style={styles.footer}>
