@@ -75,6 +75,13 @@ class FeatureExtractor:
             sza = solar.get("sza")
             par = result.get("par")
 
+            # Fallback automático para Kt si se dispone de GHI y SZA
+            if kt is None and ghi is not None and sza is not None:
+                import math
+                cos_s = math.cos(math.radians(float(sza)))
+                if cos_s > 0.01:
+                    kt = float(ghi) / (1361.0 * cos_s)
+
             # Validar que tenemos las métricas mínimas necesarias
             if ghi is None or kt is None or sza is None:
                 logger.debug("Features insuficientes para clasificación ML")

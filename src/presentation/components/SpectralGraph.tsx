@@ -367,8 +367,28 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
 
           <div style={styles.actions}>
             {weatherStatus && (
-              <div title={weatherStatus.title} style={{ display: "flex", alignItems: "center", gap: 6, backgroundColor: weatherStatus.color + "20", border: `1px solid ${weatherStatus.color}40`, padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, color: weatherStatus.color, marginRight: 16, cursor: "default" }}>
-                <span>{weatherStatus.icon}</span> {weatherStatus.label}
+              <div 
+                title={weatherStatus.title} 
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 6, 
+                  backgroundColor: weatherStatus.color + "25", 
+                  border: `1px solid ${weatherStatus.color}70`, 
+                  boxShadow: `0 0 10px ${weatherStatus.color}25`,
+                  padding: "4px 12px", 
+                  borderRadius: 16, 
+                  fontSize: 11, 
+                  fontWeight: 700, 
+                  color: weatherStatus.color, 
+                  marginRight: 12, 
+                  cursor: "default",
+                  letterSpacing: "0.02em",
+                  userSelect: "none"
+                }}
+              >
+                <span style={{ fontSize: 13 }}>{weatherStatus.icon}</span>
+                <span>{weatherStatus.label}</span>
               </div>
             )}
 

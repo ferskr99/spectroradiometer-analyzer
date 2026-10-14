@@ -498,50 +498,57 @@ async def analyze_spectra(
             cr_factor=0.02,  # Corrección CSR para FOV 5° de los EKO
         )
 
-        # ── 5. MÉTRICAS CRUZADAS (si ambos espectros disponibles) ──
+        # ── 5. MÉTRICAS DERIVADAS Y CRUZADAS (GHI / DNI / DHI / Kt) ──
         dni = None
         dhi = None
         clearness_index = None
         diffuse_fraction = None
         cross_metrics = None
+        diffuse_spectrum = None
 
         if direct_spectrum:
             dni = SpectralProcessorUseCase.calculate_total_irradiance(direct_spectrum)
-        
-        diffuse_spectrum = None
-        if global_spectrum and direct_spectrum and solar_pos:
-            import math
-            import numpy as np
-            sza_rad = math.radians(solar_pos.get('sza', 0))
-            cos_sza = math.cos(sza_rad)
-            if cos_sza > 0.01 and dni is not None:
-                dhi = total_irradiance - dni * cos_sza
-                if dhi < 0:
-                    dhi = 0.0
-                diffuse_fraction = dhi / total_irradiance if total_irradiance > 0 else None
-            
-            # Calcular Espectro Difuso (DHI): DHI(λ) = max(0, GHI(λ) - DNI(λ) * cos(SZA))
-            if cos_sza > 0.01:
-                wl_g = global_spectrum.wavelengths
-                ir_g = np.array(global_spectrum.irradiance)
-                ir_d = np.interp(wl_g, direct_spectrum.wavelengths, direct_spectrum.irradiance)
-                dhi_ir = np.maximum(0.0, ir_g - ir_d * cos_sza)
-                diffuse_spectrum = SpectralData(
-                    wavelengths=wl_g,
-                    irradiance=dhi_ir.tolist()
-                )
 
-            # Índice de claridad: GHI / E₀ (irradiancia extraterrestre ~1361 W/m²)
+        if solar_pos:
+            import math
+            sza_deg = solar_pos.get('sza', 0.0)
+            sza_rad = math.radians(sza_deg)
+            cos_sza = math.cos(sza_rad)
+
+            # Índice de Claridad Kt = GHI / (E0 * cos(SZA))
+            # E0 ≈ 1361 W/m² (constante solar extraterrestre)
+            # Solo requiere GHI y geometría solar (aplica tanto para Global como para Total)
             E0 = 1361.0
-            if cos_sza > 0.01:
+            if cos_sza > 0.01 and total_irradiance is not None:
                 clearness_index = total_irradiance / (E0 * cos_sza)
-            
-            cross_metrics = {
-                "dni": dni,
-                "dhi": dhi,
-                "clearness_index": clearness_index,
-                "diffuse_fraction": diffuse_fraction,
-            }
+                clearness_index = max(0.0, min(1.3, float(clearness_index)))
+
+            # Métricas difusas si ambos espectros (Global y Directo) están disponibles
+            if global_spectrum and direct_spectrum and dni is not None:
+                if cos_sza > 0.01:
+                    dhi = total_irradiance - dni * cos_sza
+                    if dhi < 0:
+                        dhi = 0.0
+                    diffuse_fraction = dhi / total_irradiance if total_irradiance > 0 else None
+
+                    # Calcular Espectro Difuso (DHI): DHI(λ) = max(0, GHI(λ) - DNI(λ) * cos(SZA))
+                    import numpy as np
+                    wl_g = global_spectrum.wavelengths
+                    ir_g = np.array(global_spectrum.irradiance)
+                    ir_d = np.interp(wl_g, direct_spectrum.wavelengths, direct_spectrum.irradiance)
+                    dhi_ir = np.maximum(0.0, ir_g - ir_d * cos_sza)
+                    diffuse_spectrum = SpectralData(
+                        wavelengths=wl_g,
+                        irradiance=dhi_ir.tolist()
+                    )
+
+            if clearness_index is not None or dni is not None:
+                cross_metrics = {
+                    "dni": dni,
+                    "dhi": dhi,
+                    "clearness_index": clearness_index,
+                    "diffuse_fraction": diffuse_fraction,
+                }
 
         # ── 6. ENSAMBLAJE DEL RESULTADO ────────────────────────────
         # Clasificación atmosférica por Machine Learning / Reglas Físicas

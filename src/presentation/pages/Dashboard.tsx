@@ -10,6 +10,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAnalyzeSpectrum } from "../../application/hooks/useSpectrometer";
 import { ControlPanel } from "../components/ControlPanel";
+import { apiClient } from "../../infrastructure/api/api_client";
 
 import { RawSensorsGraph } from "../components/RawSensorsGraph";
 import { SpectralGraph } from "../components/SpectralGraph";
@@ -29,12 +30,28 @@ export const Dashboard: React.FC = () => {
     reset,
   } = useAnalyzeSpectrum();
 
+  const { data: initialAnalysis } = useQuery<any>({
+    queryKey: ["initialAnalysis"],
+    queryFn: async () => {
+      try {
+        const hist = await apiClient.getHistory(1, 1);
+        if (hist && hist.records && hist.records.length > 0) {
+          return await apiClient.getHistoryDetail(hist.records[0].id);
+        }
+      } catch (e) {
+        console.warn("No se pudo cargar la última medición previa:", e);
+      }
+      return null;
+    },
+    staleTime: 300000,
+  });
+
   const { data: cachedData } = useQuery<any>({
     queryKey: ["lastAnalysis"],
     staleTime: Infinity,
   });
 
-  const activeData = cachedData ?? mutationData;
+  const activeData = cachedData ?? mutationData ?? initialAnalysis;
   const isDataAvailable = !!activeData;
 
   return (
