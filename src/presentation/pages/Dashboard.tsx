@@ -89,6 +89,7 @@ export const Dashboard: React.FC = () => {
               directData={isDataAvailable ? activeData?.direct_spectrum ?? null : null}
               diffuseData={isDataAvailable ? activeData?.diffuse_spectrum ?? null : null}
               crossMetrics={isDataAvailable ? activeData?.cross_metrics ?? null : null}
+              skyClassification={isDataAvailable ? activeData?.sky_classification ?? null : null}
               rawSpectra={null}
               sensorTarget={sensorTarget}
               isLoading={isPending}

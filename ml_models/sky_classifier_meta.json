@@ -1,0 +1,25 @@
+{
+  "trained_at": "2026-10-14T15:13:35.166642+00:00",
+  "n_samples": 20,
+  "n_features": 9,
+  "accuracy": 1.0,
+  "accuracy_std": 0.0,
+  "cv_folds": 5,
+  "class_distribution": {
+    "Cielo Despejado": 13,
+    "Nubosidad Parcial": 7
+  },
+  "feature_importance": {
+    "dni": 0.2,
+    "ghi": 0.19,
+    "clearness_index": 0.13,
+    "sza": 0.13,
+    "dhi": 0.12,
+    "aod_500": 0.12,
+    "par": 0.11,
+    "diffuse_fraction": 0.0,
+    "pwv_cm": 0.0
+  },
+  "model_type": "RandomForestClassifier",
+  "n_estimators": 100
+}

@@ -23,6 +23,7 @@ export interface SpectralGraphProps {
   directData?: SpectralData | null;
   diffuseData?: SpectralData | null;
   crossMetrics?: any | null;
+  skyClassification?: any | null;
   rawSpectra?: Record<string, SpectralData> | null;
   sensorTarget?: "Global" | "Direct" | "All" | string;
   isLoading: boolean;
@@ -139,6 +140,7 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
   directData,
   diffuseData,
   crossMetrics,
+  skyClassification,
   rawSpectra,
   sensorTarget = "All",
   isLoading,
@@ -176,12 +178,27 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
 
 
   const weatherStatus = useMemo(() => {
+    if (skyClassification) {
+      const isML = skyClassification.method === "ml";
+      const conf = Math.round((skyClassification.confidence || 0) * 100);
+      const tag = isML ? "ML (Random Forest)" : "Reglas";
+      const badgeText = `${skyClassification.class_name} · ${tag} ${conf}%`;
+
+      if (skyClassification.class_id === 0) {
+        return { label: badgeText, color: "#10b981", icon: "☀️", title: `Confianza: ${conf}% | ${tag}` };
+      } else if (skyClassification.class_id === 1) {
+        return { label: badgeText, color: "#eab308", icon: "⛅", title: `Confianza: ${conf}% | ${tag}` };
+      } else {
+        return { label: badgeText, color: "#ef4444", icon: "☁️", title: `Confianza: ${conf}% | ${tag}` };
+      }
+    }
+
     if (!crossMetrics || !crossMetrics.clearness_index) return null;
     const kt = crossMetrics.clearness_index;
-    if (kt < 0.35) return { label: "Cielo Nublado", color: "#ef4444", icon: "☁️" };
-    if (kt < 0.65) return { label: "Nubosidad Parcial", color: "#eab308", icon: "⛅" };
-    return { label: "Cielo Despejado", color: "#10b981", icon: "☀️" };
-  }, [crossMetrics]);
+    if (kt < 0.35) return { label: "Cielo Nublado (Kt)", color: "#ef4444", icon: "☁️", title: `Kt = ${kt.toFixed(3)}` };
+    if (kt < 0.65) return { label: "Nubosidad Parcial (Kt)", color: "#eab308", icon: "⛅", title: `Kt = ${kt.toFixed(3)}` };
+    return { label: "Cielo Despejado (Kt)", color: "#10b981", icon: "☀️", title: `Kt = ${kt.toFixed(3)}` };
+  }, [crossMetrics, skyClassification]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -350,7 +367,7 @@ export const SpectralGraph: React.FC<SpectralGraphProps> = ({
 
           <div style={styles.actions}>
             {weatherStatus && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, backgroundColor: weatherStatus.color + "20", border: `1px solid ${weatherStatus.color}40`, padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, color: weatherStatus.color, marginRight: 16 }}>
+              <div title={weatherStatus.title} style={{ display: "flex", alignItems: "center", gap: 6, backgroundColor: weatherStatus.color + "20", border: `1px solid ${weatherStatus.color}40`, padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, color: weatherStatus.color, marginRight: 16, cursor: "default" }}>
                 <span>{weatherStatus.icon}</span> {weatherStatus.label}
               </div>
             )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { apiClient } from "../../infrastructure/api/api_client";
 import type { HardwareSettings, SerialPortInfo } from "../../infrastructure/api/api_client";
-import { Settings, Usb, Save, RefreshCw, CheckCircle, AlertCircle, Globe, Crosshair, Navigation, MapPin, Database, Wrench } from "lucide-react";
+import { Settings, Usb, Save, RefreshCw, CheckCircle, AlertCircle, Globe, Crosshair, Navigation, MapPin, Database, Wrench, Brain } from "lucide-react";
 import { TrackerCalibrationModal } from "../components/TrackerCalibrationModal";
 
 export const SettingsView: React.FC = () => {
@@ -18,11 +18,42 @@ export const SettingsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [testResults, setTestResults] = useState<Record<string, { status: "testing"|"success"|"error", msg?: string }>>({});
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
+  const [mlStatus, setMlStatus] = useState<any>(null);
+  const [isTrainingMl, setIsTrainingMl] = useState(false);
+  const [mlMessage, setMlMessage] = useState<string>("");
 
   useEffect(() => {
     loadSettings();
     loadPorts();
+    loadMlStatus();
   }, []);
+
+  const loadMlStatus = async () => {
+    try {
+      const data = await apiClient.getMLStatus();
+      setMlStatus(data);
+    } catch (err) {
+      console.error("Error loading ML status:", err);
+    }
+  };
+
+  const handleTrainML = async () => {
+    setIsTrainingMl(true);
+    setMlMessage("");
+    try {
+      const res = await apiClient.trainMLModel();
+      if (res.status === "trained") {
+        setMlMessage(`Entrenado con éxito (${res.n_samples} muestras, Precisión: ${res.accuracy ? (res.accuracy * 100).toFixed(1) + "%" : "N/A"})`);
+      } else {
+        setMlMessage(res.message || "Aviso en entrenamiento");
+      }
+      await loadMlStatus();
+    } catch (err: any) {
+      setMlMessage("Error al entrenar: " + (err.message || String(err)));
+    } finally {
+      setIsTrainingMl(false);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -275,6 +306,61 @@ const handleToggle = (group: "global" | "direct" | "tracker", sensor: "ms711" | 
                 Calibración Avanzada
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Inteligencia Artificial / Machine Learning */}
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <Brain size={18} color="#a855f7" />
+            <h3 style={styles.cardTitle}>Machine Learning (IA)</h3>
+          </div>
+          <p style={styles.cardDesc}>Clasificador Random Forest para inferencia atmosférica y nubes.</p>
+          <div style={styles.cardBody}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, backgroundColor: "#111", padding: 12, borderRadius: 8, border: "1px solid #333", fontSize: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#888" }}>Estado:</span>
+                <span style={{ color: mlStatus?.is_trained ? "#10b981" : "#eab308", fontWeight: 600 }}>
+                  {mlStatus?.is_trained ? "● Modelo ML Activo" : "○ Reglas Físicas"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#888" }}>Algoritmo:</span>
+                <span style={{ color: "#e0e0e0" }}>Random Forest (100 árboles)</span>
+              </div>
+              {mlStatus?.accuracy != null && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#888" }}>Precisión CV (5-fold):</span>
+                  <span style={{ color: "#10b981", fontWeight: 600 }}>
+                    {(mlStatus.accuracy * 100).toFixed(1)}%
+                  </span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#888" }}>Muestras en DB:</span>
+                <span style={{ color: "#e0e0e0" }}>{mlStatus?.n_samples ?? 0} mediciones</span>
+              </div>
+            </div>
+
+            {mlMessage && (
+              <div style={{ fontSize: 11, padding: "6px 10px", borderRadius: 6, backgroundColor: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.3)", color: "#c084fc" }}>
+                {mlMessage}
+              </div>
+            )}
+
+            <button
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                width: "100%", padding: "10px 16px",
+                backgroundColor: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.3)",
+                color: "#c084fc", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: isTrainingMl ? "not-allowed" : "pointer", transition: "all 0.2s",
+              }}
+              onClick={handleTrainML}
+              disabled={isTrainingMl}
+            >
+              <RefreshCw size={14} className={isTrainingMl ? "spin" : ""} />
+              {isTrainingMl ? "Entrenando Modelo..." : "Re-entrenar Modelo ML"}
+            </button>
           </div>
         </div>
 

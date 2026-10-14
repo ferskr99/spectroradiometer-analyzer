@@ -25,6 +25,14 @@ export type AnalysisResult = components["schemas"]["AnalysisResult"] & {
   diffuse_fraction?: number | null;
   cross_metrics?: Record<string, any> | null;
   raw_spectra?: Record<string, SpectralData> | null;
+  sky_classification?: {
+    class_id: number;
+    class_name: string;
+    confidence: number;
+    method: 'ml' | 'rules';
+    model_accuracy?: number | null;
+    probabilities?: Record<string, number>;
+  } | null;
 };
 export type HTTPValidationError = components["schemas"]["HTTPValidationError"];
 
@@ -464,6 +472,22 @@ export class SpectroradiometerApiClient {
    *
    * Genera un informe PDF y retorna la URL del blob para descarga.
    */
+  /**
+   * Obtiene el estado del clasificador de Machine Learning (Random Forest).
+   */
+  async getMLStatus(): Promise<any> {
+    return this.request<any>("/api/v1/sensors/ml/status");
+  }
+
+  /**
+   * Entrena el clasificador Random Forest con las mediciones históricas.
+   */
+  async trainMLModel(): Promise<any> {
+    return this.request<any>("/api/v1/sensors/ml/train", {
+      method: "POST",
+    });
+  }
+
   async generateReport(payload: { ids: number[]; title: string; author: string; notes: string }): Promise<Blob> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);

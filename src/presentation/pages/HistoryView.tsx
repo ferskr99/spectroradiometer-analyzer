@@ -121,6 +121,8 @@ export const HistoryView: React.FC = () => {
                     globalData={singleRecordDetail?.global_spectrum ?? null}
                     directData={singleRecordDetail?.direct_spectrum ?? null}
                     diffuseData={singleRecordDetail?.diffuse_spectrum ?? null}
+                    crossMetrics={singleRecordDetail?.cross_metrics ?? null}
+                    skyClassification={singleRecordDetail?.sky_classification ?? null}
                     rawSpectra={singleRecordDetail?.raw_spectra ?? null}
                     isLoading={false} 
                     height={450} 

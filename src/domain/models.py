@@ -95,6 +95,10 @@ class AnalysisResult(BaseModel):
     cross_metrics: Optional[dict] = Field(
         None, description="Métricas cruzadas GHI/DNI (reservado para futuras versiones)"
     )
+    # Clasificación atmosférica por Machine Learning / Reglas
+    sky_classification: Optional[dict] = Field(
+        None, description="Clasificación inteligente del cielo por Random Forest / Reglas físicas"
+    )
 
 # ─── Configuración de Hardware ─────────────────────────────────────
 class SensorPortConfig(BaseModel):

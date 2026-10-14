@@ -25,6 +25,7 @@ from src.infrastructure.db.models import MeasurementRecord
 from src.application.advanced_scheduler import AdvancedScheduler, SchedulerConfig
 from src.application.websocket_manager import ws_manager
 from src.application.solar_geometry import SolarGeometry
+from src.application.ml.sky_classifier import sky_classifier
 
 logger = logging.getLogger(__name__)
 
@@ -543,6 +544,20 @@ async def analyze_spectra(
             }
 
         # ── 6. ENSAMBLAJE DEL RESULTADO ────────────────────────────
+        # Clasificación atmosférica por Machine Learning / Reglas Físicas
+        sky_ml_pred = sky_classifier.predict({
+            "cross_metrics": cross_metrics,
+            "solar_geometry": solar_pos,
+            "aod_bands": aod,
+            "total_irradiance": total_irradiance,
+            "dni": dni,
+            "dhi": dhi,
+            "clearness_index": clearness_index,
+            "diffuse_fraction": diffuse_fraction,
+            "pwv_cm": pwv,
+            "par": par,
+        })
+
         result = AnalysisResult(
             merged_spectrum=interpolated,
             global_spectrum=global_spectrum,
@@ -563,6 +578,7 @@ async def analyze_spectra(
             aod_bands=aod,
             solar_geometry=solar_pos,
             cross_metrics=cross_metrics,
+            sky_classification=sky_ml_pred,
         )
 
         # ── 7. PERSISTENCIA + BROADCAST ────────────────────────────
@@ -805,7 +821,9 @@ def get_history_detail(record_id: int, db: Session = Depends(get_db)):
         total_irradiance=record.total_irradiance,
         pwv_cm=record.pwv_cm,
         aod_bands={"500nm": record.aod_nm500} if record.aod_nm500 else None,
-        solar_geometry={"zenith": record.sza, "air_mass": record.air_mass} if record.sza else None
+        solar_geometry={"zenith": record.sza, "air_mass": record.air_mass} if record.sza else None,
+        cross_metrics=spectrum_data.get("cross_metrics") if isinstance(spectrum_data, dict) else None,
+        sky_classification=spectrum_data.get("sky_classification") if isinstance(spectrum_data, dict) else None,
     )
 
 @router.get("/history/export/csv", tags=["Datalogger"])
@@ -1146,3 +1164,18 @@ def generate_report(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
     )
+
+# ─── MACHINE LEARNING / CLASIFICACIÓN ATMOSFÉRICA ──────────────────
+@router.get("/ml/status", tags=["Machine Learning"])
+def get_ml_status():
+    """Retorna el estado del clasificador de Machine Learning (Random Forest)."""
+    return sky_classifier.get_status()
+
+
+@router.post("/ml/train", tags=["Machine Learning"])
+def train_ml_model(db: Session = Depends(get_db)):
+    """
+    Entrena o reentrena el clasificador Random Forest utilizando
+    las mediciones históricas registradas en la base de datos.
+    """
+    return sky_classifier.train(db)
